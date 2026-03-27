@@ -82,13 +82,18 @@ struct KeyboardView: View {
         }
     }
 
+    @State private var isProcessing = false  // guard against rapid taps
+
     private func handleMicTap() {
-        guard hasAccess else { return }
+        guard hasAccess, !isProcessing else { return }
 
         if isRecording {
+            isProcessing = true
             session?.stop()
             isRecording = false
             previewText = ""
+            // Brief cooldown before allowing next tap
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { isProcessing = false }
         } else {
             let s = TranscriptionSession(engine: engine)
 

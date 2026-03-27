@@ -146,9 +146,16 @@ final class WhisperEngine: ObservableObject {
 
     // MARK: - Model directory management
 
+    /// App Group container — accessible from both main app and keyboard extension.
+    private static let appGroupID = "group.com.typeoff.shared"
+
     private static func modelsRoot() -> URL {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let root = docs.appendingPathComponent("WhisperModels")
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
+            // Fallback to Documents if App Group unavailable (shouldn't happen)
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            return docs.appendingPathComponent("WhisperModels")
+        }
+        let root = container.appendingPathComponent("WhisperModels")
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         return root
     }

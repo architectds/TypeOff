@@ -7,6 +7,7 @@ class KeyboardViewController: UIInputViewController {
     private var engine: WhisperEngine?
     private var session: TranscriptionSession?
     private var hostingController: UIHostingController<KeyboardView>?
+    private var unloadTask: Task<Void, Never>?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -40,7 +41,12 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // Preload from cache when keyboard appears — model already downloaded via main app
+
+        // Cancel any pending unload — user came back
+        unloadTask?.cancel()
+        unloadTask = nil
+
+        // Preload from cache when keyboard appears
         Task {
             if engine == nil {
                 let variant = UserDefaults(suiteName: "group.com.typeoff.shared")?
@@ -53,10 +59,12 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        // Unload after 30s idle to free memory
-        Task {
+
+        // Unload after 30s idle — cancelled if keyboard reappears
+        unloadTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(30))
-            engine?.unloadModel()
+            guard !Task.isCancelled else { return }
+            await MainActor.run { self?.engine?.unloadModel() }
         }
     }
 }

@@ -269,8 +269,12 @@ final class WhisperPipeline {
 
     /// Copy cache update [1, 3072, 1, 1] into cache [1, 3072, 1, 224] at position.
     private func updateCache(_ cache: inout MLMultiArray, with update: MLMultiArray, at position: Int) {
-        for d in 0..<kvDim {
-            // cache layout: [1, kvDim, 1, maxCacheLength]
+        guard position >= 0 && position < maxCacheLength else {
+            print("[Typeoff] Cache position out of bounds: \(position)")
+            return
+        }
+        let updateCount = min(kvDim, update.count)
+        for d in 0..<updateCount {
             let idx = d * maxCacheLength + position
             cache[idx] = update[d]
         }
@@ -278,10 +282,13 @@ final class WhisperPipeline {
 
     /// Argmax over logits [1, 1, vocabSize].
     private func argmax(_ logits: MLMultiArray) -> Int32 {
+        let count = min(vocabSize, logits.count)
+        guard count > 0 else { return WhisperTokenizer.eot }
+
         var maxVal: Float = -Float.infinity
         var maxIdx: Int32 = 0
 
-        for v in 0..<vocabSize {
+        for v in 0..<count {
             let val = logits[v].floatValue
             if val > maxVal {
                 maxVal = val

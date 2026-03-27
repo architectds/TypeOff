@@ -22,11 +22,11 @@ final class StoreManager: ObservableObject {
         await updatePurchaseStatus()
 
         // Listen for transaction updates (e.g. family sharing, ask-to-buy)
-        Task.detached {
+        Task { [weak self] in
             for await result in Transaction.updates {
                 if case .verified(let tx) = result {
                     await tx.finish()
-                    await self.updatePurchaseStatus()
+                    await self?.updatePurchaseStatus()
                 }
             }
         }

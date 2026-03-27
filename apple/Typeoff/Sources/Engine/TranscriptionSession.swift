@@ -34,6 +34,9 @@ final class TranscriptionSession: ObservableObject {
     private var pendingText: String = ""
     private var windowStartSample: Int = 0
 
+    // One-sentence buffer: only flush N when N+1 starts confirming
+    private var bufferedSentence: String? = nil
+
     private let sampleRate = 16000
     private let rollInterval: TimeInterval = 3.0
     private var rollTask: Task<Void, Never>?
@@ -58,7 +61,9 @@ final class TranscriptionSession: ObservableObject {
         lockedText = ""
         pendingText = ""
         windowStartSample = 0
+        bufferedSentence = nil
         displayText = ""
+        previewText = ""
         state = .recording
 
         do {
@@ -100,7 +105,12 @@ final class TranscriptionSession: ObservableObject {
             if duration >= 1.5 {
                 let result = await rollingTranscribe(fullAudio: audio)
                 if let sentence = result.newSentence {
-                    onSentence?(sentence)
+                    // One-sentence buffer: flush the PREVIOUS sentence now that
+                    // a new one has started confirming (proves previous was real)
+                    if let buffered = bufferedSentence {
+                        onSentence?(buffered)
+                    }
+                    bufferedSentence = sentence
                 }
                 // Update displays
                 previewText = pendingText  // keyboard: only show uncommitted text
@@ -206,7 +216,14 @@ final class TranscriptionSession: ObservableObject {
     private func finalize() async {
         let audio = recorder.stop()
 
+        // Flush the buffered sentence first — it was held back for safety
+        if let buffered = bufferedSentence {
+            onSentence?(buffered)
+            bufferedSentence = nil
+        }
+
         guard silenceDetector.hasSpeech(audio: audio) else {
+            previewText = ""
             state = .done
             return
         }
@@ -220,6 +237,7 @@ final class TranscriptionSession: ObservableObject {
         }
 
         guard windowAudio.count >= sampleRate / 3 else {
+            previewText = ""
             state = .done
             return
         }
@@ -235,9 +253,9 @@ final class TranscriptionSession: ObservableObject {
             let spacedRemainder = lockedText.isEmpty ? finalRemainder : " " + finalRemainder
             onFinalRemainder?(spacedRemainder)
             displayText = (lockedText + spacedRemainder).trimmingCharacters(in: .whitespaces)
-            previewText = ""
         }
 
+        previewText = ""
         state = .done
     }
 

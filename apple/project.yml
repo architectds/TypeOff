@@ -19,8 +19,6 @@ targets:
       - path: Typeoff/Sources/App
       - path: Typeoff/Sources/Engine
       - path: Typeoff/Sources/Store
-      - path: Typeoff/Resources/vocab.json
-        buildPhase: resources
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
@@ -32,9 +30,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.chenbao.typeoff
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
-    # dependencies:
-    #   - target: TypeoffKeyboard
-    #     embed: true
     entitlements:
       path: Typeoff/Typeoff.entitlements
     preBuildScripts: []

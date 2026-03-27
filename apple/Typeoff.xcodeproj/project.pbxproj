@@ -15,13 +15,13 @@
 		4C319BE53E179A396D483A06 /* StoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 674405B1CCF31CAE3C7E0F4E /* StoreManager.swift */; };
 		4C57601B3314B08D898F29AF /* TrialManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4E9DFE483FA8AED3CD83F4 /* TrialManager.swift */; };
 		621112843038F39CEE0DA2E8 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B255C5C571A1BDC3F04D18A /* KeyboardView.swift */; };
-		97E1C01F8D8851AA0E03C4EA /* vocab.json in Resources */ = {isa = PBXBuildFile; fileRef = 218C506B644B4BCE8BF05BC9 /* vocab.json */; };
 		991B300B06D9530970B6E386 /* WhisperPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580324C3EAE16A45B06F52FB /* WhisperPipelineTests.swift */; };
 		9C79690273DB266EA6C39808 /* NotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3103FC1497932FC9797515 /* NotesView.swift */; };
 		9EF1EF23037B4C75251F9634 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3E14FF979E750F50870CF5 /* OnboardingView.swift */; };
 		A2076E571A3DE94442580A84 /* SilenceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1ADBEE23DEE85F3976240B3 /* SilenceDetector.swift */; };
 		A50D061B794C1061DBBE17BB /* WhisperTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBCC0DECF4C2BA7EB17982EF /* WhisperTokenizer.swift */; };
 		A952A07055AE649F0C82F8FE /* WhisperEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8AC1D5F5AFE72CFB24979E3 /* WhisperEngine.swift */; };
+		B80EC5FBE9659601569E5B18 /* vocab.json in Resources */ = {isa = PBXBuildFile; fileRef = 080F47346B6FD43956CF4DA5 /* vocab.json */; };
 		BF86EED7D25C22F301EEAFF4 /* SilenceDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A6BDA1C09389B8570E4346 /* SilenceDetectorTests.swift */; };
 		C0CA756C1EA2DA6D8DC3D72F /* AudioPreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD743CAD035E9E817FF84AD5 /* AudioPreprocessor.swift */; };
 		CBFC43483B0DFE0DA42A3578 /* TrialManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4E9DFE483FA8AED3CD83F4 /* TrialManager.swift */; };
@@ -44,9 +44,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		080F47346B6FD43956CF4DA5 /* vocab.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vocab.json; sourceTree = "<group>"; };
 		0A1ED89D3D51D3BB8AC16C59 /* MelSpectrogramTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelSpectrogramTests.swift; sourceTree = "<group>"; };
 		0B4E9DFE483FA8AED3CD83F4 /* TrialManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialManager.swift; sourceTree = "<group>"; };
-		218C506B644B4BCE8BF05BC9 /* vocab.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vocab.json; sourceTree = "<group>"; };
 		2B4142BFF61C435932DB27F7 /* WhisperPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperPipeline.swift; sourceTree = "<group>"; };
 		32A6BDA1C09389B8570E4346 /* SilenceDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilenceDetectorTests.swift; sourceTree = "<group>"; };
 		43445E53417AD5095831716C /* AudioPreprocessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPreprocessorTests.swift; sourceTree = "<group>"; };
@@ -64,9 +64,9 @@
 		C401BF13A1A047FDE403647C /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		C4B3D4B1F3C9C9AC3D57AD68 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		D1ADBEE23DEE85F3976240B3 /* SilenceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilenceDetector.swift; sourceTree = "<group>"; };
-		DAFFCDFE7635CB0EB450A2D7 /* TypeoffKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TypeoffKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		DAFFCDFE7635CB0EB450A2D7 /* TypeoffKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TypeoffKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DBCC0DECF4C2BA7EB17982EF /* WhisperTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperTokenizer.swift; sourceTree = "<group>"; };
-		E0A2F2B1A6F6A59C0AFC37B5 /* Typeoff.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Typeoff.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E0A2F2B1A6F6A59C0AFC37B5 /* Typeoff.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Typeoff.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1EA7A7D28836735F447E458 /* TypeoffTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TypeoffTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E38618CDDA50DCB8B9800CCD /* MelSpectrogram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelSpectrogram.swift; sourceTree = "<group>"; };
 		F8AC1D5F5AFE72CFB24979E3 /* WhisperEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperEngine.swift; sourceTree = "<group>"; };
@@ -74,15 +74,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		43917CA5320A8057052DA511 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				218C506B644B4BCE8BF05BC9 /* vocab.json */,
-			);
-			name = Resources;
-			path = Typeoff/Resources;
-			sourceTree = "<group>";
-		};
 		48D3091BEE6DD2EF6C91BF37 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -104,6 +95,7 @@
 				C401BF13A1A047FDE403647C /* AudioRecorder.swift */,
 				E38618CDDA50DCB8B9800CCD /* MelSpectrogram.swift */,
 				D1ADBEE23DEE85F3976240B3 /* SilenceDetector.swift */,
+				080F47346B6FD43956CF4DA5 /* vocab.json */,
 				F8AC1D5F5AFE72CFB24979E3 /* WhisperEngine.swift */,
 				2B4142BFF61C435932DB27F7 /* WhisperPipeline.swift */,
 				DBCC0DECF4C2BA7EB17982EF /* WhisperTokenizer.swift */,
@@ -163,7 +155,6 @@
 				65C80FC99E1202B36F6EC10E /* Engine */,
 				6D8CA84926F62AA40BDD370B /* Engine */,
 				6D336015E1F2DBD8C93E7CBE /* Keyboard */,
-				43917CA5320A8057052DA511 /* Resources */,
 				8ACDA42252EC315EDFEE176F /* Store */,
 				9E752C2C36F76C59F502F408 /* Products */,
 			);
@@ -239,11 +230,9 @@
 						ProvisioningStyle = Automatic;
 					};
 					555DC74C44A20B97A84B9816 = {
-						DevelopmentTeam = 2TWV639R43;
 						ProvisioningStyle = Automatic;
 					};
 					DA7A8C236C1EE542C49CD6F9 = {
-						DevelopmentTeam = 2TWV639R43;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -274,7 +263,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				97E1C01F8D8851AA0E03C4EA /* vocab.json in Resources */,
+				B80EC5FBE9659601569E5B18 /* vocab.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -405,6 +394,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Typeoff/TypeoffKeyboard.entitlements;
+				DEVELOPMENT_TEAM = D9UU9594J2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Typeoff/Sources/Keyboard/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -443,6 +433,7 @@
 				CODE_SIGN_ENTITLEMENTS = Typeoff/Typeoff.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9UU9594J2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = TypeOff;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "TypeOff needs microphone access to transcribe your speech. Audio is processed entirely on your device.";
@@ -543,6 +534,7 @@
 				CODE_SIGN_ENTITLEMENTS = Typeoff/Typeoff.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9UU9594J2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = TypeOff;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "TypeOff needs microphone access to transcribe your speech. Audio is processed entirely on your device.";
@@ -564,6 +556,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Typeoff/TypeoffKeyboard.entitlements;
+				DEVELOPMENT_TEAM = D9UU9594J2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Typeoff/Sources/Keyboard/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

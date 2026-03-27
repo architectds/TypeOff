@@ -1,69 +1,83 @@
 import Foundation
-import AVFoundation
-import CoreML
+import WhisperKit
 
-/// Local Whisper transcription engine using CoreML.
-/// Loads base model (~74MB), runs on Neural Engine.
+/// Local Whisper transcription engine using WhisperKit (CoreML + Neural Engine).
+/// Downloads model on first launch, then runs fully offline.
+@MainActor
 final class WhisperEngine: ObservableObject {
 
     @Published var isModelLoaded = false
     @Published var isTranscribing = false
+    @Published var loadingProgress: String = ""
+    @Published var detectedLanguage: String?
 
-    private var whisperModel: WhisperBase?  // CoreML generated class
+    private var whisperKit: WhisperKit?
+
+    // Model variant — "base" is ~74MB, "small" is ~244MB
+    private let modelVariant: String
+
+    init(modelVariant: String = "base") {
+        self.modelVariant = modelVariant
+    }
 
     // MARK: - Model lifecycle
 
-    /// Load model — call once at app start or on first use.
-    /// Takes ~0.2-0.5s on Neural Engine.
+    /// Load model — downloads on first launch, then cached locally.
     func loadModel() async {
-        guard whisperModel == nil else { return }
+        guard whisperKit == nil else { return }
 
-        let config = MLModelConfiguration()
-        config.computeUnits = .all  // Prefer Neural Engine
+        loadingProgress = "Loading model..."
 
         do {
-            whisperModel = try await WhisperBase.load(configuration: config)
-            await MainActor.run { isModelLoaded = true }
-            print("[Typeoff] Model loaded")
+            whisperKit = try await WhisperKit(
+                model: "openai_whisper-\(modelVariant)",
+                verbose: false,
+                prewarm: true
+            )
+            isModelLoaded = true
+            loadingProgress = ""
+            print("[Typeoff] WhisperKit loaded: \(modelVariant)")
         } catch {
-            print("[Typeoff] Model load failed: \(error)")
+            loadingProgress = "Model load failed"
+            print("[Typeoff] WhisperKit load failed: \(error)")
         }
     }
 
-    /// Unload model to free memory when not in use.
+    /// Unload model to free memory.
     func unloadModel() {
-        whisperModel = nil
+        whisperKit = nil
         isModelLoaded = false
+        detectedLanguage = nil
         print("[Typeoff] Model unloaded")
     }
 
     // MARK: - Transcription
 
     /// Transcribe audio samples (16kHz mono Float32) → text.
-    func transcribe(audioSamples: [Float], sampleRate: Int = 16000) async -> String {
-        guard let model = whisperModel else { return "" }
+    func transcribe(audioSamples: [Float]) async -> String {
+        guard let kit = whisperKit else { return "" }
 
-        await MainActor.run { isTranscribing = true }
-        defer { Task { @MainActor in isTranscribing = false } }
+        isTranscribing = true
+        defer { isTranscribing = false }
 
         let startTime = CFAbsoluteTimeGetCurrent()
 
-        // Convert to MLMultiArray for CoreML input
-        let audioArray = try? MLMultiArray(shape: [1, NSNumber(value: audioSamples.count)], dataType: .float32)
-        guard let audioArray = audioArray else { return "" }
-
-        for (i, sample) in audioSamples.enumerated() {
-            audioArray[i] = NSNumber(value: sample)
-        }
-
         do {
-            // Run inference
-            let input = WhisperBaseInput(audio: audioArray)
-            let output = try await model.prediction(input: input)
-            let text = output.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let result = try await kit.transcribe(
+                audioArray: audioSamples
+            )
+
+            let text = result.map { $0.text }.joined(separator: " ")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Pick up detected language from first segment
+            if let firstResult = result.first,
+               let lang = firstResult.language {
+                detectedLanguage = lang
+            }
 
             let elapsed = CFAbsoluteTimeGetCurrent() - startTime
-            print("[Typeoff] Transcribed in \(String(format: "%.1f", elapsed))s: \"\(text)\"")
+            print("[Typeoff] Transcribed in \(String(format: "%.1f", elapsed))s: \"\(text.prefix(80))\"")
 
             return text
         } catch {

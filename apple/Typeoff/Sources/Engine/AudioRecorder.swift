@@ -4,8 +4,8 @@ import AVFoundation
 /// Continuous audio recorder with rolling buffer access.
 final class AudioRecorder: ObservableObject {
 
-    @Published var isRecording = false
-    @Published var duration: TimeInterval = 0
+    @MainActor @Published var isRecording = false
+    @MainActor @Published var duration: TimeInterval = 0
 
     private let sampleRate: Double = 16000
     private var audioEngine: AVAudioEngine?

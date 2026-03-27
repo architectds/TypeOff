@@ -1,0 +1,56 @@
+name: Typeoff
+options:
+  bundleIdPrefix: com.typeoff
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: ""  # Set your team ID here
+
+packages:
+  WhisperKit:
+    url: https://github.com/argmaxinc/WhisperKit.git
+    from: "0.9.0"
+
+targets:
+  Typeoff:
+    type: application
+    platform: iOS
+    sources:
+      - path: Typeoff/Sources/App
+      - path: Typeoff/Sources/Engine
+      - path: Typeoff/Sources/Store
+    resources:
+      - path: Typeoff/Resources
+    dependencies:
+      - package: WhisperKit
+    settings:
+      base:
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Typeoff needs microphone access to transcribe your speech. Audio is processed entirely on your device."
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.typeoff.app
+    entitlements:
+      path: Typeoff/Typeoff.entitlements
+    preBuildScripts: []
+
+  TypeoffKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Typeoff/Sources/Keyboard
+      - path: Typeoff/Sources/Engine
+      - path: Typeoff/Sources/Store/TrialManager.swift
+    dependencies:
+      - package: WhisperKit
+      - target: Typeoff
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.typeoff.app.keyboard
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.keyboard-service
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Typeoff keyboard needs microphone access to transcribe your speech."
+    entitlements:
+      path: Typeoff/TypeoffKeyboard.entitlements

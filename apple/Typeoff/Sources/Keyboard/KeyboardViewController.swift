@@ -40,10 +40,12 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // Preload model when keyboard appears so it's warm before mic tap
+        // Preload from cache when keyboard appears — model already downloaded via main app
         Task {
             if engine == nil {
-                engine = WhisperEngine(modelVariant: modelVariant)
+                let variant = UserDefaults(suiteName: "group.com.typeoff.shared")?
+                    .string(forKey: "modelVariant") ?? "base"
+                engine = WhisperEngine(modelVariant: variant)
             }
             await engine?.loadModel()
         }
@@ -51,14 +53,10 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        // Unload after 30s to free memory
+        // Unload after 30s idle to free memory
         Task {
             try? await Task.sleep(for: .seconds(30))
             engine?.unloadModel()
         }
-    }
-
-    private var modelVariant: String {
-        UserDefaults(suiteName: "group.com.typeoff.shared")?.string(forKey: "modelVariant") ?? "base"
     }
 }

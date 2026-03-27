@@ -12,7 +12,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Keyboard setup — most important
+                // Keyboard setup
                 Section {
                     Link(destination: URL(string: UIApplication.openSettingsURLString)!) {
                         HStack {
@@ -32,17 +32,31 @@ struct SettingsView: View {
                     Text("Keyboard")
                 }
 
+                // Precision picker
+                Section {
+                    ForEach(Precision.allCases) { precision in
+                        precisionRow(precision)
+                    }
+
+                    if engine.isDownloading {
+                        HStack {
+                            ProgressView()
+                                .padding(.trailing, 4)
+                            Text(engine.loadingProgress)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Precision")
+                } footer: {
+                    Text("Higher precision is more accurate but uses more storage and is slightly slower.")
+                }
+
                 Section("Transcription") {
                     VStack(alignment: .leading) {
                         Text("Silence timeout: \(Int(silenceDuration))s")
                         Slider(value: $silenceDuration, in: 3...15, step: 1)
-                    }
-
-                    HStack {
-                        Text("Model")
-                        Spacer()
-                        Text(engine.isModelLoaded ? "Ready" : "Loading...")
-                            .foregroundStyle(engine.isModelLoaded ? .green : .secondary)
                     }
                 }
 
@@ -80,6 +94,42 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
         }
+    }
+
+    // MARK: - Precision row
+
+    private func precisionRow(_ precision: Precision) -> some View {
+        Button {
+            guard !engine.isDownloading else { return }
+            Task { await engine.loadModel(precision: precision) }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(precision.label)
+                        .foregroundStyle(.primary)
+                    Text(precision.sizeLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if engine.activePrecision == precision && engine.isModelLoaded {
+                    // Active
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                } else if engine.downloadedModels.contains(precision) {
+                    // Downloaded but not active
+                    Image(systemName: "circle")
+                        .foregroundStyle(.secondary)
+                } else {
+                    // Not downloaded — will trigger download
+                    Image(systemName: "arrow.down.circle")
+                        .foregroundStyle(.blue)
+                }
+            }
+        }
+        .disabled(engine.isDownloading)
     }
 }
 

@@ -54,8 +54,11 @@ targets:
     platform: iOS
     sources:
       - path: Typeoff/Tests/Engine
+    info:
+      path: Typeoff/Tests/Info.plist
     dependencies:
       - target: Typeoff
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.typeoff.app.tests
+        GENERATE_INFOPLIST_FILE: NO

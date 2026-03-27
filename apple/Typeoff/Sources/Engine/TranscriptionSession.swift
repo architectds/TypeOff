@@ -34,12 +34,16 @@ final class TranscriptionSession: ObservableObject {
     private var pendingText: String = ""
     private var windowStartSample: Int = 0
 
-    // One-sentence buffer: only flush N when N+1 starts confirming
+    // One-sentence buffer: only flush N when N+1 starts confirming OR timeout
     private var bufferedSentence: String? = nil
+    private var bufferTimestamp: Date? = nil      // when sentence entered the buffer
+    private var bufferStableCount: Int = 0        // how many rolls the buffer survived unchanged
+    private let bufferTimeoutSeconds: TimeInterval = 8.0  // max wait before force-flush
+    private let bufferStableThreshold: Int = 3            // flush if stable across 3 rolls
 
     // Delayed trim: only release audio/mel after the buffer is flushed (N+2 safety)
-    private var pendingTrimPoint: Int? = nil  // mel frame index to trim at next flush
-    private var lastTrimPoint: Int? = nil     // trim point from the flush before
+    private var pendingTrimPoint: Int? = nil
+    private var lastTrimPoint: Int? = nil
 
     private let sampleRate = 16000
     private let rollInterval: TimeInterval = 3.0
@@ -66,6 +70,8 @@ final class TranscriptionSession: ObservableObject {
         pendingText = ""
         windowStartSample = 0
         bufferedSentence = nil
+        bufferTimestamp = nil
+        bufferStableCount = 0
         pendingTrimPoint = nil
         lastTrimPoint = nil
         displayText = ""
@@ -96,6 +102,21 @@ final class TranscriptionSession: ObservableObject {
         Task { await finalize() }
     }
 
+    // MARK: - Buffer flush
+
+    private func flushBuffer() {
+        guard let buffered = bufferedSentence else { return }
+        onSentence?(buffered)
+        bufferedSentence = nil
+        bufferTimestamp = nil
+        bufferStableCount = 0
+
+        // Trim old audio/mel now that flushed sentence is committed
+        if let trimPoint = lastTrimPoint {
+            engine.trimMel(beforeFrameIndex: trimPoint)
+        }
+    }
+
     // MARK: - Recording loop
 
     private func recordingLoop() async {
@@ -116,18 +137,24 @@ final class TranscriptionSession: ObservableObject {
             if duration >= 1.5 {
                 let result = await rollingTranscribe(fullAudio: audio)
                 if let sentence = result.newSentence {
-                    // One-sentence buffer: flush the PREVIOUS sentence now that
-                    // a new one has started confirming (proves previous was real)
-                    if let buffered = bufferedSentence {
-                        onSentence?(buffered)
-                        // NOW safe to trim — the flushed sentence's audio is no longer needed
-                        // Keep one extra window of margin for safety
-                        if let trimPoint = lastTrimPoint {
-                            engine.trimMel(beforeFrameIndex: trimPoint)
-                        }
-                    }
+                    // New sentence locked — flush the PREVIOUS buffered one
+                    flushBuffer()
                     bufferedSentence = sentence
+                    bufferTimestamp = Date()
+                    bufferStableCount = 0
                     lastTrimPoint = pendingTrimPoint
+                } else if bufferedSentence != nil {
+                    // No new sentence — check if buffer should flush on timeout or stability
+                    bufferStableCount += 1
+
+                    let timedOut = bufferTimestamp.map { Date().timeIntervalSince($0) >= bufferTimeoutSeconds } ?? false
+                    let stable = bufferStableCount >= bufferStableThreshold
+
+                    if timedOut || stable {
+                        let reason = timedOut ? "timeout" : "stable×\(bufferStableCount)"
+                        print("[Typeoff] Buffer flush (\(reason))")
+                        flushBuffer()
+                    }
                 }
                 // Update displays
                 previewText = pendingText  // keyboard: only show uncommitted text
@@ -237,11 +264,8 @@ final class TranscriptionSession: ObservableObject {
     private func finalize() async {
         let audio = recorder.stop()
 
-        // Flush the buffered sentence first — it was held back for safety
-        if let buffered = bufferedSentence {
-            onSentence?(buffered)
-            bufferedSentence = nil
-        }
+        // Flush anything still in the buffer
+        flushBuffer()
 
         guard silenceDetector.hasSpeech(audio: audio) else {
             previewText = ""

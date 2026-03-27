@@ -4,23 +4,24 @@ import SwiftUI
 /// Text is inserted sentence-by-sentence via onSentence callback (not all at once at the end).
 struct KeyboardView: View {
 
+    @ObservedObject var engine: WhisperEngine
     let onInsertText: (String) -> Void
     let onDeleteBackward: () -> Void
     let onNextKeyboard: () -> Void
 
-    @StateObject private var engine = WhisperEngine(modelVariant: "base")
     @State private var session: TranscriptionSession?
     @State private var isRecording = false
     @State private var previewText = ""
     @State private var hasAccess = true
+    @State private var isProcessing = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Preview bar — shows pending (in-progress) text, or loading hint for larger models
-            if !previewText.isEmpty || (!engine.isModelLoaded && engine.activePrecision != .standard) {
+            // Preview bar — shows pending (in-progress) text, or loading hint
+            if !previewText.isEmpty || !engine.isModelLoaded {
                 Text(engine.isModelLoaded
                      ? previewText
-                     : "Loading \(engine.activePrecision.label) model... \(engine.activePrecision.loadTimeHint)")
+                     : "Loading voice engine...")
                     .font(.caption)
                     .foregroundStyle(engine.isModelLoaded ? .primary : .secondary)
                     .lineLimit(2)
@@ -76,13 +77,10 @@ struct KeyboardView: View {
         }
         .frame(height: 80)
         .background(Color(.systemBackground))
-        .task {
+        .onAppear {
             hasAccess = TrialManager.hasAccessStatic()
-            await engine.loadModel()
         }
     }
-
-    @State private var isProcessing = false  // guard against rapid taps
 
     private func handleMicTap() {
         guard hasAccess, !isProcessing else { return }
@@ -92,16 +90,13 @@ struct KeyboardView: View {
             session?.stop()
             isRecording = false
             previewText = ""
-            // Brief cooldown before allowing next tap
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { isProcessing = false }
         } else {
             let s = TranscriptionSession(engine: engine)
 
-            // Sentence-by-sentence insertion — each locked sentence goes into the text field
             s.onSentence = { sentence in
                 onInsertText(sentence)
             }
-            // Final remainder after recording stops
             s.onFinalRemainder = { remainder in
                 onInsertText(remainder)
                 previewText = ""
@@ -111,7 +106,6 @@ struct KeyboardView: View {
             s.start()
             isRecording = true
 
-            // Poll pending text for preview bar (only uncommitted text)
             Task {
                 while isRecording {
                     previewText = s.previewText

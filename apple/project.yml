@@ -24,13 +24,22 @@ targets:
       - path: Typeoff/Resources
     settings:
       base:
+        GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "TypeOff needs microphone access to transcribe your speech. Audio is processed entirely on your device."
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_CFBundleDisplayName: TypeOff
         PRODUCT_BUNDLE_IDENTIFIER: com.typeoff.app
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - target: TypeoffKeyboard
+        embed: true
     entitlements:
       path: Typeoff/Typeoff.entitlements
     preBuildScripts: []
+    scheme:
+      testTargets:
+        - TypeoffTests
 
   TypeoffKeyboard:
     type: app-extension
@@ -39,14 +48,11 @@ targets:
       - path: Typeoff/Sources/Keyboard
       - path: Typeoff/Sources/Engine
       - path: Typeoff/Sources/Store/TrialManager.swift
-    dependencies:
-      - target: Typeoff
-        embed: false
     settings:
       base:
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Typeoff/Sources/Keyboard/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.typeoff.app.keyboard
-        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.keyboard-service
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Typeoff keyboard needs microphone access to transcribe your speech."
     entitlements:
       path: Typeoff/TypeoffKeyboard.entitlements
 

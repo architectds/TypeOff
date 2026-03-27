@@ -19,7 +19,7 @@ final class TrialManager: ObservableObject {
     }
 
     init() {
-        refresh()
+        // Don't hit UserDefaults on init — refresh when UI needs it
     }
 
     /// Check access: either in trial or purchased.

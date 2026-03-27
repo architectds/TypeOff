@@ -25,7 +25,7 @@ final class TranscriptionSession: ObservableObject {
 
     var engine: WhisperEngine
     private let recorder = AudioRecorder()
-    private let silenceDetector = SilenceDetector()
+    private var silenceDetector = SilenceDetector()
 
     // Streaming state — mirrors Python StreamingTranscriber
     private var prevWords: [String] = []
@@ -330,9 +330,21 @@ final class TranscriptionSession: ObservableObject {
     /// Split text into (complete sentences, remainder).
     private func extractCompleteSentences(_ text: String) -> (String, String) {
         let sentenceEndPattern = /[.!?。！？]\s*$/
-        let sentenceSplitPattern = /(?<=[.!?。！？])\s+/
-
-        let parts = text.split(separator: sentenceSplitPattern).map(String.init)
+        // Split after sentence-ending punctuation followed by whitespace
+        let parts = text.components(separatedBy: .whitespaces)
+            .reduce(into: [[String]]()) { result, word in
+                if result.isEmpty {
+                    result.append([word])
+                } else {
+                    result[result.count - 1].append(word)
+                }
+                // If this word ends with sentence punctuation, start a new group
+                if let last = word.last, ".!?。！？".contains(last) {
+                    result.append([])
+                }
+            }
+            .map { $0.joined(separator: " ") }
+            .filter { !$0.isEmpty }
 
         if parts.count <= 1 {
             if text.firstMatch(of: sentenceEndPattern) != nil {

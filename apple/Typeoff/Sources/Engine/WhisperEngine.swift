@@ -64,13 +64,26 @@ final class WhisperEngine: ObservableObject {
 
     init(modelVariant: String = "base") {
         activePrecision = Precision(rawValue: modelVariant) ?? .standard
-        scanDownloadedModels()
+        // Don't scan on init — do it lazily when needed
     }
 
     // MARK: - Model lifecycle
 
+    /// Check if model files exist on disk for a given precision.
+    static func isModelDownloaded(_ precision: Precision) -> Bool {
+        let dir = modelDirectory(for: precision)
+        return FileManager.default.fileExists(atPath: dir.appendingPathComponent("AudioEncoder.mlmodelc").path)
+    }
+
     func loadModel(precision: Precision? = nil) async {
         let target = precision ?? activePrecision
+
+        // Don't even try if model files aren't on disk
+        guard Self.isModelDownloaded(target) else {
+            loadingProgress = "No model"
+            print("[Typeoff] Model not downloaded: \(target.label)")
+            return
+        }
 
         if target != activePrecision || pipeline.isLoaded {
             pipeline.unload()
@@ -78,22 +91,10 @@ final class WhisperEngine: ObservableObject {
         }
 
         activePrecision = target
-
-        let modelDir = Self.modelDirectory(for: target)
-
-        // Check if model is downloaded
-        guard FileManager.default.fileExists(atPath: modelDir.appendingPathComponent("AudioEncoder.mlmodelc").path) else {
-            isDownloading = true
-            loadingProgress = "Download \(target.label) in Settings"
-            // TODO: trigger download from HuggingFace
-            // For now, models must be pre-placed in the app's documents directory
-            isDownloading = false
-            return
-        }
-
         loadingProgress = "Loading \(target.label)..."
 
         do {
+            let modelDir = Self.modelDirectory(for: target)
             try await pipeline.load(modelDir: modelDir)
             downloadedModels.insert(target)
             isModelLoaded = true

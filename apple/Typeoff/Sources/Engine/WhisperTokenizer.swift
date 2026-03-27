@@ -45,7 +45,7 @@ final class WhisperTokenizer {
         for b: UInt8 in 0...255 {
             if !byteList.contains(b) {
                 byteList.append(b)
-                decoder[Character(Unicode.Scalar(256 + n))] = b
+                decoder[Character(Unicode.Scalar(256 + n)!)] = b
                 n += 1
             }
         }

@@ -102,22 +102,22 @@ final class WhisperPipeline {
         }
         let clampFloor = globalMax - 8.0
 
-        let melArray = try MLMultiArray(shape: [1, nMels as NSNumber, 1, targetFrames as NSNumber], dataType: .float16)
+        let melArray = try MLMultiArray(shape: [1, NSNumber(value: nMels), 1, NSNumber(value: targetFrames)], dataType: .float16)
 
         // Zero-fill padding (maps to -1.0 after normalization for silence)
-        let paddingValue = Float16((clampFloor + 4.0) / 4.0)
+        let paddingValue: Float = (clampFloor + 4.0) / 4.0
         let totalElements = nMels * targetFrames
         for i in 0..<totalElements {
-            melArray[i] = NSNumber(value: paddingValue)
+            melArray[i] = paddingValue as NSNumber
         }
 
         // Fill with normalized mel frames: layout is [1, nMels, 1, numFrames]
         for f in 0..<numFrames {
             for m in 0..<nMels {
                 let val = max(melFrames[f][m], clampFloor)
-                let normalized = (val + 4.0) / 4.0
+                let normalized: Float = (val + 4.0) / 4.0
                 let idx = m * targetFrames + f
-                melArray[idx] = NSNumber(value: Float16(normalized))
+                melArray[idx] = normalized as NSNumber
             }
         }
 
@@ -140,8 +140,8 @@ final class WhisperPipeline {
         let initialTokens = tokenizer.initialTokens(language: language)
 
         // Initialize KV cache (zeros)
-        var keyCache = try MLMultiArray(shape: [1, kvDim as NSNumber, 1, maxCacheLength as NSNumber], dataType: .float16)
-        var valueCache = try MLMultiArray(shape: [1, kvDim as NSNumber, 1, maxCacheLength as NSNumber], dataType: .float16)
+        var keyCache = try MLMultiArray(shape: [1, NSNumber(value: kvDim), 1, NSNumber(value: maxCacheLength)], dataType: .float16)
+        var valueCache = try MLMultiArray(shape: [1, NSNumber(value: kvDim), 1, NSNumber(value: maxCacheLength)], dataType: .float16)
 
         var outputTokens: [Int32] = []
         var cachePos: Int32 = 0
@@ -225,23 +225,25 @@ final class WhisperPipeline {
     ) throws -> DecoderStepResult {
 
         // input_ids: [1]
-        let inputIds = try MLMultiArray(shape: [1], dataType: .int32)
-        inputIds[0] = NSNumber(value: inputId)
+        let inputIds = try MLMultiArray(shape: [NSNumber(value: 1)], dataType: .int32)
+        inputIds[0] = inputId as NSNumber
 
         // cache_length: [1]
-        let cacheLenArray = try MLMultiArray(shape: [1], dataType: .int32)
-        cacheLenArray[0] = NSNumber(value: cacheLength)
+        let cacheLenArray = try MLMultiArray(shape: [NSNumber(value: 1)], dataType: .int32)
+        cacheLenArray[0] = cacheLength as NSNumber
 
         // kv_cache_update_mask: [1, 224] — one-hot at cacheLength position
-        let updateMask = try MLMultiArray(shape: [1, maxCacheLength as NSNumber], dataType: .float16)
+        let updateMask = try MLMultiArray(shape: [NSNumber(value: 1), NSNumber(value: maxCacheLength)], dataType: .float16)
         for i in 0..<maxCacheLength {
-            updateMask[i] = NSNumber(value: Float16(i == Int(cacheLength) ? 1 : 0))
+            let maskVal: Float = i == Int(cacheLength) ? 1 : 0
+            updateMask[i] = maskVal as NSNumber
         }
 
         // decoder_key_padding_mask: [1, 224] — 0 for valid positions, -inf for padding
-        let paddingMask = try MLMultiArray(shape: [1, maxCacheLength as NSNumber], dataType: .float16)
+        let paddingMask = try MLMultiArray(shape: [NSNumber(value: 1), NSNumber(value: maxCacheLength)], dataType: .float16)
         for i in 0..<maxCacheLength {
-            paddingMask[i] = NSNumber(value: i <= Int(cacheLength) ? Float16(0) : Float16(-10000))
+            let padVal: Float = i <= Int(cacheLength) ? 0 : -10000
+            paddingMask[i] = padVal as NSNumber
         }
 
         let input = try MLDictionaryFeatureProvider(dictionary: [

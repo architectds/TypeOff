@@ -15,10 +15,6 @@ struct TypeoffApp: App {
                 .environmentObject(trialManager)
                 .environmentObject(storeManager)
                 .preferredColorScheme(colorScheme)
-                .task {
-                    await engine.loadModel()
-                    await storeManager.loadProducts()
-                }
         }
     }
 
@@ -46,6 +42,8 @@ struct ContentView: View {
 
 struct MainTabView: View {
 
+    @EnvironmentObject var trialManager: TrialManager
+    @EnvironmentObject var storeManager: StoreManager
     @State private var selectedTab = 1  // Start on Notes (center)
 
     var body: some View {
@@ -72,5 +70,10 @@ struct MainTabView: View {
                 .tag(2)
         }
         .tint(Theme.primary)
+        .task {
+            // Load trial + store only when user reaches the main app
+            trialManager.refresh()
+            Task { await storeManager.loadProducts() }
+        }
     }
 }

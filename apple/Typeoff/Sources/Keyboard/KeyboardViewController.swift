@@ -4,8 +4,12 @@ import SwiftUI
 /// Custom keyboard extension — mic button in toolbar for voice-to-text in any app.
 class KeyboardViewController: UIInputViewController {
 
-    private var engine: WhisperEngine?
-    private var session: TranscriptionSession?
+    private let engine: WhisperEngine = {
+        let variant = UserDefaults(suiteName: "group.com.typeoff.shared")?
+            .string(forKey: "modelVariant") ?? "base"
+        return WhisperEngine(modelVariant: variant)
+    }()
+
     private var hostingController: UIHostingController<KeyboardView>?
     private var unloadTask: Task<Void, Never>?
 
@@ -13,6 +17,7 @@ class KeyboardViewController: UIInputViewController {
         super.viewDidLoad()
 
         let keyboardView = KeyboardView(
+            engine: engine,
             onInsertText: { [weak self] text in
                 self?.textDocumentProxy.insertText(text)
             },
@@ -46,15 +51,7 @@ class KeyboardViewController: UIInputViewController {
         unloadTask?.cancel()
         unloadTask = nil
 
-        // Preload from cache when keyboard appears
-        Task {
-            if engine == nil {
-                let variant = UserDefaults(suiteName: "group.com.typeoff.shared")?
-                    .string(forKey: "modelVariant") ?? "base"
-                engine = WhisperEngine(modelVariant: variant)
-            }
-            await engine?.loadModel()
-        }
+        Task { await engine.loadModel() }
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -64,7 +61,7 @@ class KeyboardViewController: UIInputViewController {
         unloadTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(30))
             guard !Task.isCancelled else { return }
-            await MainActor.run { self?.engine?.unloadModel() }
+            await MainActor.run { self?.engine.unloadModel() }
         }
     }
 }

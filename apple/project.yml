@@ -48,3 +48,14 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Typeoff keyboard needs microphone access to transcribe your speech."
     entitlements:
       path: Typeoff/TypeoffKeyboard.entitlements
+
+  TypeoffTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Typeoff/Tests/Engine
+    dependencies:
+      - target: Typeoff
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.typeoff.app.tests

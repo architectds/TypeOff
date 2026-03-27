@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01A225B8BB8A91C8587747B9 /* WhisperPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B31532F529AF774612EAB32 /* WhisperPipelineTests.swift */; };
 		044E73FC579DC061477D9B92 /* AudioPreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06FC7A5280C7DA557043E7C /* AudioPreprocessor.swift */; };
 		153CA8F44D857ADF260E540F /* WhisperPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8C1D6DEB533F9032F03B3FA /* WhisperPipeline.swift */; };
 		17D5C202D23A0376111D543D /* WhisperTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B09503683DA5AD59D2E9B5A1 /* WhisperTokenizer.swift */; };
@@ -23,17 +24,21 @@
 		9B2060F64EDBA198AA452644 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 055BEA295296B87E6D5865A3 /* AudioRecorder.swift */; };
 		9BEB37E8083CFD746E598EB3 /* TranscriptionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C051BFE6D14C139BC17B2B3 /* TranscriptionSession.swift */; };
 		A56CE4F6A9441EB5715A5787 /* MelSpectrogram.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F89EA2B92718CA1B9C4C2A /* MelSpectrogram.swift */; };
+		A94451D6D452B29080F961E9 /* SilenceDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C793A70A823FC77B2CA1C5 /* SilenceDetectorTests.swift */; };
+		BA075134D6502E87424ACCBD /* AudioPreprocessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0FE7F63926387F03679D48 /* AudioPreprocessorTests.swift */; };
 		BB2F28A22C023732B10BA46E /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1FED48F510099F63F4CDA9 /* ProfileView.swift */; };
 		C30F359290A7E05652FE1EF5 /* MelSpectrogram.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F89EA2B92718CA1B9C4C2A /* MelSpectrogram.swift */; };
 		C5A3271C15D3CD5DD0B9E207 /* WhisperEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F230D893B88B17926E82C8 /* WhisperEngine.swift */; };
 		C92F9177C9C704446305FBDF /* SilenceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD95830F9205F7C45CC45639 /* SilenceDetector.swift */; };
 		D18AACF3B9D87EACB4EEA93B /* TypeoffApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88388F21A139D2F9B1841700 /* TypeoffApp.swift */; };
 		DCFA0BDB2C4B6328A3ED7600 /* TranscriptionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C051BFE6D14C139BC17B2B3 /* TranscriptionSession.swift */; };
+		E12BD881EC1AB7E41BD901FB /* MelSpectrogramTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F9DFD139B4465D340613FF /* MelSpectrogramTests.swift */; };
 		E465F5573EA461D9BFCD64B0 /* WhisperPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8C1D6DEB533F9032F03B3FA /* WhisperPipeline.swift */; };
 		EA75D6DE09A0348277F25548 /* TrialManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2BA79CEFA8E34CF0A3D9AEB /* TrialManager.swift */; };
 		EBA23DD248310E51E0833128 /* SilenceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD95830F9205F7C45CC45639 /* SilenceDetector.swift */; };
 		EFFCA10169DEE13A02154252 /* WhisperTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B09503683DA5AD59D2E9B5A1 /* WhisperTokenizer.swift */; };
 		FA209B4A2624771DD9CDAC48 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 055BEA295296B87E6D5865A3 /* AudioRecorder.swift */; };
+		FC39F9397605BFBB7903ECA7 /* WhisperTokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1658320634B3C69A94A2679 /* WhisperTokenizerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,25 +49,38 @@
 			remoteGlobalIDString = B50EA7BDF96755E5AFFEC175;
 			remoteInfo = Typeoff;
 		};
+		BDBFD099D8F38D5C17A4F827 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 99CD99DD25A912D2E0A4C0B9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B50EA7BDF96755E5AFFEC175;
+			remoteInfo = Typeoff;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		055BEA295296B87E6D5865A3 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
+		07C53F7EFB5D7FFE5A221354 /* TypeoffTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TypeoffTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C051BFE6D14C139BC17B2B3 /* TranscriptionSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSession.swift; sourceTree = "<group>"; };
 		244441423784A023E935BC7D /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
 		2C238013B6DC560392138B90 /* Typeoff.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Typeoff.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3F0FE7F63926387F03679D48 /* AudioPreprocessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPreprocessorTests.swift; sourceTree = "<group>"; };
 		58CC11C47A63AFFD8465F1C8 /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
 		67733FF2A57CF5F3463B45C8 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		71EF2B9B4B565B0C36265E22 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		76F89EA2B92718CA1B9C4C2A /* MelSpectrogram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelSpectrogram.swift; sourceTree = "<group>"; };
 		7AAB0C029C0E403F5067D00D /* TypeoffKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TypeoffKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		88388F21A139D2F9B1841700 /* TypeoffApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeoffApp.swift; sourceTree = "<group>"; };
+		8B31532F529AF774612EAB32 /* WhisperPipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperPipelineTests.swift; sourceTree = "<group>"; };
+		A1658320634B3C69A94A2679 /* WhisperTokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperTokenizerTests.swift; sourceTree = "<group>"; };
 		A1F230D893B88B17926E82C8 /* WhisperEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperEngine.swift; sourceTree = "<group>"; };
 		AD95830F9205F7C45CC45639 /* SilenceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilenceDetector.swift; sourceTree = "<group>"; };
 		B06FC7A5280C7DA557043E7C /* AudioPreprocessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPreprocessor.swift; sourceTree = "<group>"; };
 		B09503683DA5AD59D2E9B5A1 /* WhisperTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperTokenizer.swift; sourceTree = "<group>"; };
 		BD113C838BAD83791E9C611F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		BE1FED48F510099F63F4CDA9 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		C9F9DFD139B4465D340613FF /* MelSpectrogramTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelSpectrogramTests.swift; sourceTree = "<group>"; };
+		D4C793A70A823FC77B2CA1C5 /* SilenceDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilenceDetectorTests.swift; sourceTree = "<group>"; };
 		E084FD4600AC6C76F614B9F2 /* StoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreManager.swift; sourceTree = "<group>"; };
 		E2BA79CEFA8E34CF0A3D9AEB /* TrialManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialManager.swift; sourceTree = "<group>"; };
 		E8C1D6DEB533F9032F03B3FA /* WhisperPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperPipeline.swift; sourceTree = "<group>"; };
@@ -75,6 +93,7 @@
 			children = (
 				2C238013B6DC560392138B90 /* Typeoff.app */,
 				7AAB0C029C0E403F5067D00D /* TypeoffKeyboard.appex */,
+				07C53F7EFB5D7FFE5A221354 /* TypeoffTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -84,6 +103,7 @@
 			children = (
 				6F3FBD44DF28C3FA94474495 /* App */,
 				8EEB78DDDA9F81AB21CD20A7 /* Engine */,
+				DF6259CCCA74D33067C26373 /* Engine */,
 				7D0082A0382D1E62E1CC1F8B /* Keyboard */,
 				4DE6BB2C4F86F5162F75F37A /* Store */,
 				2B103DF57DAC3FCE84EBABF2 /* Products */,
@@ -140,6 +160,19 @@
 			path = Typeoff/Sources/Engine;
 			sourceTree = "<group>";
 		};
+		DF6259CCCA74D33067C26373 /* Engine */ = {
+			isa = PBXGroup;
+			children = (
+				3F0FE7F63926387F03679D48 /* AudioPreprocessorTests.swift */,
+				C9F9DFD139B4465D340613FF /* MelSpectrogramTests.swift */,
+				D4C793A70A823FC77B2CA1C5 /* SilenceDetectorTests.swift */,
+				8B31532F529AF774612EAB32 /* WhisperPipelineTests.swift */,
+				A1658320634B3C69A94A2679 /* WhisperTokenizerTests.swift */,
+			);
+			name = Engine;
+			path = Typeoff/Tests/Engine;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -160,6 +193,24 @@
 			productName = TypeoffKeyboard;
 			productReference = 7AAB0C029C0E403F5067D00D /* TypeoffKeyboard.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		A9E013EA6775135AB562B7D9 /* TypeoffTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0ECC0F7F039B6D505B872A90 /* Build configuration list for PBXNativeTarget "TypeoffTests" */;
+			buildPhases = (
+				8FF0F791A7AEB830719072C6 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F475DB1631A2D378161B88D2 /* PBXTargetDependency */,
+			);
+			name = TypeoffTests;
+			packageProductDependencies = (
+			);
+			productName = TypeoffTests;
+			productReference = 07C53F7EFB5D7FFE5A221354 /* TypeoffTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		B50EA7BDF96755E5AFFEC175 /* Typeoff */ = {
 			isa = PBXNativeTarget;
@@ -190,6 +241,9 @@
 					24B637282DFE3F5640E36909 = {
 						DevelopmentTeam = "";
 					};
+					A9E013EA6775135AB562B7D9 = {
+						DevelopmentTeam = "";
+					};
 					B50EA7BDF96755E5AFFEC175 = {
 						DevelopmentTeam = "";
 					};
@@ -211,6 +265,7 @@
 			targets = (
 				B50EA7BDF96755E5AFFEC175 /* Typeoff */,
 				24B637282DFE3F5640E36909 /* TypeoffKeyboard */,
+				A9E013EA6775135AB562B7D9 /* TypeoffTests */,
 			);
 		};
 /* End PBXProject section */
@@ -239,6 +294,18 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8FF0F791A7AEB830719072C6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA075134D6502E87424ACCBD /* AudioPreprocessorTests.swift in Sources */,
+				E12BD881EC1AB7E41BD901FB /* MelSpectrogramTests.swift in Sources */,
+				A94451D6D452B29080F961E9 /* SilenceDetectorTests.swift in Sources */,
+				01A225B8BB8A91C8587747B9 /* WhisperPipelineTests.swift in Sources */,
+				FC39F9397605BFBB7903ECA7 /* WhisperTokenizerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B0F47C63721D38DB79E4C24E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -264,6 +331,11 @@
 			isa = PBXTargetDependency;
 			target = B50EA7BDF96755E5AFFEC175 /* Typeoff */;
 			targetProxy = 244BEAE35282BF4B9994ED1A /* PBXContainerItemProxy */;
+		};
+		F475DB1631A2D378161B88D2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B50EA7BDF96755E5AFFEC175 /* Typeoff */;
+			targetProxy = BDBFD099D8F38D5C17A4F827 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -389,6 +461,22 @@
 			};
 			name = Release;
 		};
+		4A2CF18EB8F72878054FADFB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.typeoff.app.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Typeoff.app/Typeoff";
+			};
+			name = Release;
+		};
 		521727753062E0DA78FB95F4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -459,9 +547,34 @@
 			};
 			name = Debug;
 		};
+		FC9EE9BAC7EB7420CEAC8637 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.typeoff.app.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Typeoff.app/Typeoff";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0ECC0F7F039B6D505B872A90 /* Build configuration list for PBXNativeTarget "TypeoffTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC9EE9BAC7EB7420CEAC8637 /* Debug */,
+				4A2CF18EB8F72878054FADFB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		ADD8E5C673BF9F9D1D7627D0 /* Build configuration list for PBXNativeTarget "TypeoffKeyboard" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

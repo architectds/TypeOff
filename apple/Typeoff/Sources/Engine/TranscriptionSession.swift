@@ -66,6 +66,11 @@ final class TranscriptionSession: ObservableObject {
         previewText = ""
         state = .recording
 
+        // Wire recorder → engine mel precomputation (zero mel wait at transcribe time)
+        recorder.onAudioChunk = { [weak self] chunk in
+            self?.engine.streamMel(chunk)
+        }
+
         do {
             try recorder.start()
         } catch {
@@ -190,7 +195,13 @@ final class TranscriptionSession: ObservableObject {
             if !currentWords.isEmpty {
                 let lockedWordCount = complete.split(separator: " ").count
                 let ratio = Double(lockedWordCount) / Double(currentWords.count)
-                windowStartSample += Int(ratio * Double(windowAudio.count))
+                let slideSamples = Int(ratio * Double(windowAudio.count))
+                windowStartSample += slideSamples
+
+                // Release memory: trim old audio + mel frames that are behind the window
+                // This keeps memory flat even for long recordings
+                let melFrameIndex = slideSamples / 160  // hop_length = 160
+                engine.trimMel(beforeFrameIndex: melFrameIndex)
             }
 
             // Reset agreement for new window

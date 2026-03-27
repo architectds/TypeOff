@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 
 /// Continuous audio recorder with rolling buffer access.
+/// Feeds audio through bandpass filter + noise gate, then streams to mel processor.
 final class AudioRecorder: ObservableObject {
 
     @MainActor @Published var isRecording = false
@@ -14,12 +15,19 @@ final class AudioRecorder: ObservableObject {
     private var startTime: Date?
     private var durationTimer: Timer?
 
+    private let preprocessor = AudioPreprocessor()
+
+    /// Optional: stream audio to engine's mel processor for precomputation.
+    var onAudioChunk: (([Float]) -> Void)?
+
     // MARK: - Recording
 
     func start() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement)
         try session.setActive(true)
+
+        preprocessor.reset()
 
         audioEngine = AVAudioEngine()
         guard let engine = audioEngine else { return }
@@ -36,11 +44,17 @@ final class AudioRecorder: ObservableObject {
                   let channelData = pcmBuffer.floatChannelData?[0] else { return }
 
             let frameCount = Int(pcmBuffer.frameLength)
-            let samples = Array(UnsafeBufferPointer(start: channelData, count: frameCount))
+            var samples = Array(UnsafeBufferPointer(start: channelData, count: frameCount))
+
+            // Bandpass filter + noise gate
+            self.preprocessor.process(&samples)
 
             self.bufferLock.lock()
             self.buffer.append(contentsOf: samples)
             self.bufferLock.unlock()
+
+            // Stream to mel processor (precompute mel frames)
+            self.onAudioChunk?(samples)
         }
 
         bufferLock.lock()
@@ -49,15 +63,15 @@ final class AudioRecorder: ObservableObject {
 
         try engine.start()
         startTime = Date()
-        isRecording = true
+        Task { @MainActor in isRecording = true }
 
         // Update duration on main thread
         durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self, let start = self.startTime else { return }
-            self.duration = Date().timeIntervalSince(start)
+            Task { @MainActor in self.duration = Date().timeIntervalSince(start) }
         }
 
-        print("[Typeoff] Recording started")
+        print("[Typeoff] Recording started (bandpass 80-8000 Hz + noise gate)")
     }
 
     func stop() -> [Float] {
@@ -68,14 +82,16 @@ final class AudioRecorder: ObservableObject {
         audioEngine?.stop()
         audioEngine = nil
 
-        isRecording = false
+        Task { @MainActor in isRecording = false }
 
         bufferLock.lock()
         let audio = buffer
         buffer = []
         bufferLock.unlock()
 
-        duration = 0
+        Task { @MainActor in
+            duration = 0
+        }
         startTime = nil
 
         print("[Typeoff] Recording stopped: \(String(format: "%.1f", Double(audio.count) / sampleRate))s")
@@ -96,6 +112,16 @@ final class AudioRecorder: ObservableObject {
         let audio = sampleIndex < buffer.count ? Array(buffer[sampleIndex...]) : []
         bufferLock.unlock()
         return audio
+    }
+
+    /// Release audio samples before a given index (after window slide).
+    /// Frees memory from already-flushed sentences.
+    func trimAudio(before sampleIndex: Int) {
+        bufferLock.lock()
+        if sampleIndex > 0 && sampleIndex < buffer.count {
+            buffer = Array(buffer[sampleIndex...])
+        }
+        bufferLock.unlock()
     }
 
     /// Current buffer length in seconds.

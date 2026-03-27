@@ -16,8 +16,8 @@ struct KeyboardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Preview bar — shows pending (in-progress) text
-            if !previewText.isEmpty || !engine.isModelLoaded {
+            // Preview bar — shows pending (in-progress) text, or loading hint for larger models
+            if !previewText.isEmpty || (!engine.isModelLoaded && engine.activePrecision != .standard) {
                 Text(engine.isModelLoaded
                      ? previewText
                      : "Loading \(engine.activePrecision.label) model... \(engine.activePrecision.loadTimeHint)")

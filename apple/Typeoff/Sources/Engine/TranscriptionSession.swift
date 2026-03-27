@@ -1,9 +1,14 @@
 import Foundation
 import Combine
 
-/// Orchestrates recording → rolling transcription → silence detection → final output.
-/// Mirrors the Python streaming approach: record continuously, transcribe every 3s,
-/// lock text at 30s windows, auto-stop on 8s silence.
+/// Port of Python `streamer.py` — sentence-based sliding window + LocalAgreement.
+///
+/// Strategy:
+///   1. Record continuously, transcribe rolling buffer every 3s
+///   2. Word-level LocalAgreement: only trust words that match across 2 runs
+///   3. When a complete sentence is confirmed → LOCK it, fire onSentence, slide window
+///   4. Re-transcribe only the audio after the locked sentence (~5-10s)
+///   5. Final pass: re-transcribe last incomplete sentence for accuracy
 @MainActor
 final class TranscriptionSession: ObservableObject {
 
@@ -16,22 +21,26 @@ final class TranscriptionSession: ObservableObject {
 
     @Published var state: State = .idle
     @Published var displayText: String = ""
-    @Published var lockedText: String = ""
 
     var engine: WhisperEngine
     private let recorder = AudioRecorder()
     private let silenceDetector = SilenceDetector()
 
-    private let rollInterval: TimeInterval = 3.0
-    private let maxWindowSeconds: TimeInterval = 30.0
-    private let minAudioForRoll: TimeInterval = 1.5
+    // Streaming state — mirrors Python StreamingTranscriber
+    private var prevWords: [String] = []
+    private var confirmedWords: [String] = []
+    private var lockedText: String = ""
+    private var pendingText: String = ""
+    private var windowStartSample: Int = 0
 
-    private var lockSample: Int = 0
+    private let sampleRate = 16000
+    private let rollInterval: TimeInterval = 3.0
     private var rollTask: Task<Void, Never>?
 
-    /// Callback fired each time a new chunk of text is ready to paste.
-    /// In keyboard mode, this calls insertText().
-    var onTextReady: ((String) -> Void)?
+    /// Called each time a complete sentence is locked — keyboard calls insertText() here.
+    var onSentence: ((String) -> Void)?
+    /// Called once at the end with any remaining fragment.
+    var onFinalRemainder: ((String) -> Void)?
 
     init(engine: WhisperEngine) {
         self.engine = engine
@@ -42,9 +51,13 @@ final class TranscriptionSession: ObservableObject {
     func start() {
         guard state == .idle || state == .done else { return }
 
+        // Reset streaming state
+        prevWords = []
+        confirmedWords = []
         lockedText = ""
+        pendingText = ""
+        windowStartSample = 0
         displayText = ""
-        lockSample = 0
         state = .recording
 
         do {
@@ -63,7 +76,6 @@ final class TranscriptionSession: ObservableObject {
         state = .finalizing
         rollTask?.cancel()
         rollTask = nil
-
         Task { await finalize() }
     }
 
@@ -72,9 +84,9 @@ final class TranscriptionSession: ObservableObject {
     private func recordingLoop() async {
         while state == .recording && !Task.isCancelled {
             let audio = recorder.getAudio()
-            let duration = Double(audio.count) / 16000.0
+            let duration = Double(audio.count) / Double(sampleRate)
 
-            // Auto-stop on silence
+            // Auto-stop on 8s silence
             if duration > 8.0 && silenceDetector.hasSpeech(audio: audio) {
                 if silenceDetector.detectEndOfSpeech(audio: audio) {
                     print("[Typeoff] Silence detected — auto-stopping")
@@ -84,28 +96,17 @@ final class TranscriptionSession: ObservableObject {
             }
 
             // Rolling transcription
-            if duration >= minAudioForRoll {
-                let windowAudio = lockSample < audio.count
-                    ? Array(audio[lockSample...])
-                    : audio
-                let windowDuration = Double(windowAudio.count) / 16000.0
-
-                if windowDuration >= minAudioForRoll {
-                    let text = await engine.transcribe(audioSamples: windowAudio)
-
-                    if !text.isEmpty && !isHallucination(text) {
-                        let fullText = lockedText.isEmpty
-                            ? text
-                            : lockedText + " " + text
-                        displayText = fullText
-                    }
-
-                    // Slide window at 30s to keep transcription fast
-                    if windowDuration > maxWindowSeconds {
-                        lockedText = displayText
-                        lockSample = audio.count
-                        print("[Typeoff] Locked at \(String(format: "%.0f", duration))s")
-                    }
+            if duration >= 1.5 {
+                let result = await rollingTranscribe(fullAudio: audio)
+                if let sentence = result.newSentence {
+                    onSentence?(sentence)
+                }
+                // Update display: locked + pending
+                if !lockedText.isEmpty || !pendingText.isEmpty {
+                    let display = pendingText.isEmpty
+                        ? lockedText
+                        : (lockedText + " " + pendingText).trimmingCharacters(in: .whitespaces)
+                    displayText = display
                 }
             }
 
@@ -113,31 +114,165 @@ final class TranscriptionSession: ObservableObject {
         }
     }
 
-    // MARK: - Finalize
+    // MARK: - Rolling transcription (port of Python rolling_transcribe)
+
+    private struct RollResult {
+        let newSentence: String?
+        let pending: String
+    }
+
+    private func rollingTranscribe(fullAudio: [Float]) async -> RollResult {
+        // Slice to current window
+        let windowAudio: [Float]
+        if windowStartSample < fullAudio.count {
+            windowAudio = Array(fullAudio[windowStartSample...])
+        } else {
+            windowAudio = fullAudio
+        }
+
+        // Skip if too short
+        guard windowAudio.count >= sampleRate / 2 else {
+            return RollResult(newSentence: nil, pending: pendingText)
+        }
+
+        let text = await engine.transcribe(audioSamples: windowAudio)
+
+        // Hallucination filter
+        guard !Self.hallucinations.contains(text.lowercased().trimmingCharacters(in: .whitespaces)) else {
+            return RollResult(newSentence: nil, pending: pendingText)
+        }
+
+        let currentWords = text.split(separator: " ").map(String.init)
+
+        // Word-level LocalAgreement
+        let agreed = commonPrefixWords(prevWords, currentWords)
+        let newConfirmed = agreed.count > confirmedWords.count
+            ? Array(agreed[confirmedWords.count...])
+            : []
+        prevWords = currentWords
+
+        if !newConfirmed.isEmpty {
+            confirmedWords = agreed
+        }
+
+        let confirmedText = confirmedWords.joined(separator: " ")
+
+        // Check for complete sentences
+        let (complete, remainder) = extractCompleteSentences(confirmedText)
+
+        var newSentence: String? = nil
+
+        if !complete.isEmpty && complete != lockedText {
+            // New sentence confirmed — lock and slide
+            var sentence = String(complete.dropFirst(lockedText.count))
+                .trimmingCharacters(in: .whitespaces)
+            if !lockedText.isEmpty {
+                sentence = " " + sentence
+            }
+            newSentence = sentence
+
+            lockedText = complete
+            pendingText = remainder
+
+            // Slide window: estimate where locked audio ends
+            if !currentWords.isEmpty {
+                let lockedWordCount = complete.split(separator: " ").count
+                let ratio = Double(lockedWordCount) / Double(currentWords.count)
+                windowStartSample += Int(ratio * Double(windowAudio.count))
+            }
+
+            // Reset agreement for new window
+            prevWords = remainder.isEmpty ? [] : remainder.split(separator: " ").map(String.init)
+            confirmedWords = prevWords
+
+            print("[Typeoff] LOCKED: \"\(sentence.trimmingCharacters(in: .whitespaces))\"")
+        } else {
+            // Update pending
+            if confirmedText.hasPrefix(lockedText) {
+                pendingText = String(confirmedText.dropFirst(lockedText.count))
+                    .trimmingCharacters(in: .whitespaces)
+            } else {
+                pendingText = confirmedText
+            }
+        }
+
+        return RollResult(newSentence: newSentence, pending: pendingText)
+    }
+
+    // MARK: - Finalize (port of Python final_transcribe)
 
     private func finalize() async {
         let audio = recorder.stop()
 
         guard silenceDetector.hasSpeech(audio: audio) else {
-            displayText = ""
             state = .done
             return
         }
 
-        // Final pass on audio after locked point
-        let windowAudio = lockSample < audio.count
-            ? Array(audio[lockSample...])
-            : audio
+        // Transcribe remaining audio after last locked sentence
+        let windowAudio: [Float]
+        if windowStartSample < audio.count {
+            windowAudio = Array(audio[windowStartSample...])
+        } else {
+            windowAudio = audio
+        }
 
-        let text = await engine.transcribe(audioSamples: windowAudio)
+        guard windowAudio.count >= sampleRate / 3 else {
+            state = .done
+            return
+        }
 
-        if !text.isEmpty && !isHallucination(text) {
-            let fullText = lockedText.isEmpty ? text : lockedText + " " + text
-            displayText = fullText
-            onTextReady?(fullText)
+        var text = await engine.transcribe(audioSamples: windowAudio)
+
+        if Self.hallucinations.contains(text.lowercased().trimmingCharacters(in: .whitespaces)) {
+            text = ""
+        }
+
+        let finalRemainder = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !finalRemainder.isEmpty {
+            let spacedRemainder = lockedText.isEmpty ? finalRemainder : " " + finalRemainder
+            onFinalRemainder?(spacedRemainder)
+            displayText = (lockedText + spacedRemainder).trimmingCharacters(in: .whitespaces)
         }
 
         state = .done
+    }
+
+    // MARK: - Helpers (ported from Python)
+
+    /// Longest common prefix between two word lists.
+    private func commonPrefixWords(_ a: [String], _ b: [String]) -> [String] {
+        let length = min(a.count, b.count)
+        for i in 0..<length {
+            if a[i] != b[i] {
+                return Array(a[0..<i])
+            }
+        }
+        return Array(a[0..<length])
+    }
+
+    /// Split text into (complete sentences, remainder).
+    private func extractCompleteSentences(_ text: String) -> (String, String) {
+        let sentenceEndPattern = /[.!?。！？]\s*$/
+        let sentenceSplitPattern = /(?<=[.!?。！？])\s+/
+
+        let parts = text.split(separator: sentenceSplitPattern).map(String.init)
+
+        if parts.count <= 1 {
+            if text.firstMatch(of: sentenceEndPattern) != nil {
+                return (text, "")
+            }
+            return ("", text)
+        }
+
+        // Check if last part also ends with punctuation
+        if let last = parts.last, last.firstMatch(of: sentenceEndPattern) != nil {
+            return (text, "")
+        }
+
+        let complete = parts.dropLast().joined(separator: " ")
+        let remainder = parts.last ?? ""
+        return (complete, remainder)
     }
 
     // MARK: - Hallucination filter
@@ -146,10 +281,6 @@ final class TranscriptionSession: ObservableObject {
         "", "you", "thank you.", "thanks for watching!", "thanks for watching.",
         "subscribe", "bye.", "bye", "thank you", "you.", "the end.",
         "thanks for listening.", "see you next time.", "thank you for watching.",
-        "...",
+        "...", "mbc 뉴스 , 이덕영입니다.", "字幕by索兰娅梦", "请不吝点赞 订阅 转发 打赏支持明镜与点点栏目",
     ]
-
-    private func isHallucination(_ text: String) -> Bool {
-        Self.hallucinations.contains(text.lowercased().trimmingCharacters(in: .whitespaces))
-    }
 }

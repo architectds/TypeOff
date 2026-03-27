@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// SwiftUI view for the keyboard extension — mic button + live preview.
+/// Text is inserted sentence-by-sentence via onSentence callback (not all at once at the end).
 struct KeyboardView: View {
 
     let onInsertText: (String) -> Void
@@ -15,11 +16,11 @@ struct KeyboardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Preview bar
-            if !previewText.isEmpty {
-                Text(previewText)
+            // Preview bar — shows pending (in-progress) text
+            if !previewText.isEmpty || !engine.isModelLoaded {
+                Text(engine.isModelLoaded ? previewText : engine.loadingProgress)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(engine.isModelLoaded ? .primary : .secondary)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
@@ -29,7 +30,7 @@ struct KeyboardView: View {
 
             // Button row
             HStack(spacing: 16) {
-                // Globe button — switch keyboard
+                // Globe — switch keyboard
                 Button { onNextKeyboard() } label: {
                     Image(systemName: "globe")
                         .font(.title3)
@@ -40,9 +41,7 @@ struct KeyboardView: View {
                 Spacer()
 
                 // Mic button
-                Button {
-                    handleMicTap()
-                } label: {
+                Button { handleMicTap() } label: {
                     ZStack {
                         Circle()
                             .fill(isRecording ? Color.red : Color.blue)
@@ -80,22 +79,28 @@ struct KeyboardView: View {
         guard hasAccess else { return }
 
         if isRecording {
-            // Stop
             session?.stop()
             isRecording = false
+            previewText = ""
         } else {
-            // Start
             let s = TranscriptionSession(engine: engine)
-            s.onTextReady = { text in
-                onInsertText(text)
+
+            // Sentence-by-sentence insertion — each locked sentence goes into the text field
+            s.onSentence = { sentence in
+                onInsertText(sentence)
+            }
+            // Final remainder after recording stops
+            s.onFinalRemainder = { remainder in
+                onInsertText(remainder)
                 previewText = ""
             }
-            session = s
 
-            // Update preview during recording
+            session = s
+            s.start()
+            isRecording = true
+
+            // Poll display text for preview bar
             Task {
-                s.start()
-                isRecording = true
                 while isRecording {
                     previewText = s.displayText
                     try? await Task.sleep(for: .milliseconds(300))

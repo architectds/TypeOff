@@ -51,7 +51,7 @@ struct ProfileView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Typeoff User")
+                Text("TypeOff User")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.onSurface)
 
@@ -68,7 +68,7 @@ struct ProfileView: View {
 
     private var statusText: String {
         if trialManager.isPurchased {
-            return "Typeoff Unlimited"
+            return "TypeOff Unlimited"
         } else if trialManager.isTrialActive {
             let days = trialManager.trialDaysRemaining
             return "Trial · \(days) day\(days == 1 ? "" : "s") left"
@@ -100,7 +100,7 @@ struct ProfileView: View {
                                 .foregroundStyle(Theme.primary)
                                 .frame(width: 32)
 
-                            Text("Unlock Typeoff — $9.99")
+                            Text("Unlock TypeOff — $9.99")
                                 .font(.body)
                                 .foregroundStyle(Theme.onSurface)
 

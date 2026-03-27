@@ -52,7 +52,7 @@ struct SettingsView: View {
                             .foregroundStyle(Theme.primary)
                             .frame(width: 32)
 
-                        Text("Enable Typeoff Keyboard")
+                        Text("Enable TypeOff Keyboard")
                             .font(.body)
                             .foregroundStyle(Theme.onSurface)
 
@@ -65,7 +65,7 @@ struct SettingsView: View {
                     .padding(16)
                 }
 
-                Text("Settings → General → Keyboard → Keyboards → Add New Keyboard → Typeoff")
+                Text("Settings → General → Keyboard → Keyboards → Add New Keyboard → TypeOff")
                     .font(.caption)
                     .foregroundStyle(Theme.onSurfaceVariant)
                     .padding(.horizontal, 16)

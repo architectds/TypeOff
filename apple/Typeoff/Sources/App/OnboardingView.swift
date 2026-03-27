@@ -28,7 +28,7 @@ struct OnboardingView: View {
                 .foregroundStyle(Theme.primary)
 
             VStack(spacing: 8) {
-                Text("Typeoff")
+                Text("TypeOff")
                     .font(.system(size: 34, weight: .bold))
                     .foregroundStyle(Theme.onSurface)
 
@@ -69,7 +69,7 @@ struct OnboardingView: View {
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(Theme.onSurface)
 
-                Text("Typeoff needs microphone access to hear your voice. Audio is processed entirely on your device.")
+                Text("TypeOff needs microphone access to hear your voice. Audio is processed entirely on your device.")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Theme.onSurfaceVariant)
@@ -109,13 +109,13 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 14) {
                 step(number: 1, text: "Open Settings → General → Keyboard")
                 step(number: 2, text: "Tap Keyboards → Add New Keyboard")
-                step(number: 3, text: "Select Typeoff")
+                step(number: 3, text: "Select TypeOff")
                 step(number: 4, text: "Allow Full Access (for microphone)")
             }
             .tonalCard(color: Theme.surfaceContainerLowest)
             .sectionContainer()
 
-            Text("Full Access is required for microphone recording. Typeoff never logs keystrokes, never sends data anywhere, and works 100% offline.")
+            Text("Full Access is required for microphone recording. TypeOff never logs keystrokes, never sends data anywhere, and works 100% offline.")
                 .font(.caption)
                 .foregroundStyle(Theme.onSurfaceVariant)
                 .multilineTextAlignment(.center)

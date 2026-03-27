@@ -1,4 +1,4 @@
-name: Typeoff
+name: TypeOff
 options:
   bundleIdPrefix: com.typeoff
   deploymentTarget:
@@ -24,8 +24,9 @@ targets:
       - path: Typeoff/Resources
     settings:
       base:
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Typeoff needs microphone access to transcribe your speech. Audio is processed entirely on your device."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "TypeOff needs microphone access to transcribe your speech. Audio is processed entirely on your device."
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: TypeOff
         PRODUCT_BUNDLE_IDENTIFIER: com.typeoff.app
     entitlements:
       path: Typeoff/Typeoff.entitlements

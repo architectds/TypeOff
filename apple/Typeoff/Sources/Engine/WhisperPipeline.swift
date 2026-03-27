@@ -88,22 +88,36 @@ final class WhisperPipeline {
         // Encoder expects [1, 80, 1, 3000] — pad or truncate mel frames to 3000
         let targetFrames = 3000
         let nMels = 80
+        let numFrames = min(melFrames.count, targetFrames)
+
+        // Whisper normalization (from openai/whisper/audio.py):
+        //   log_spec = torch.maximum(log_spec, log_spec.max() - 8.0)
+        //   log_spec = (log_spec + 4.0) / 4.0
+        // Find global max across all mel frames
+        var globalMax: Float = -Float.infinity
+        for f in 0..<numFrames {
+            for m in 0..<nMels {
+                globalMax = max(globalMax, melFrames[f][m])
+            }
+        }
+        let clampFloor = globalMax - 8.0
 
         let melArray = try MLMultiArray(shape: [1, nMels as NSNumber, 1, targetFrames as NSNumber], dataType: .float16)
 
-        // Zero-fill (padding for short audio)
+        // Zero-fill padding (maps to -1.0 after normalization for silence)
+        let paddingValue = Float16((clampFloor + 4.0) / 4.0)
         let totalElements = nMels * targetFrames
         for i in 0..<totalElements {
-            melArray[i] = NSNumber(value: Float16(0))
+            melArray[i] = NSNumber(value: paddingValue)
         }
 
-        // Fill with actual mel frames: layout is [1, nMels, 1, numFrames]
-        let numFrames = min(melFrames.count, targetFrames)
+        // Fill with normalized mel frames: layout is [1, nMels, 1, numFrames]
         for f in 0..<numFrames {
             for m in 0..<nMels {
-                // Index: batch(0) * 80*1*3000 + m * 1*3000 + 0 * 3000 + f
+                let val = max(melFrames[f][m], clampFloor)
+                let normalized = (val + 4.0) / 4.0
                 let idx = m * targetFrames + f
-                melArray[idx] = NSNumber(value: Float16(melFrames[f][m]))
+                melArray[idx] = NSNumber(value: Float16(normalized))
             }
         }
 

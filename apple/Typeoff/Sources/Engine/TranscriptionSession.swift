@@ -83,6 +83,16 @@ final class TranscriptionSession: ObservableObject {
             self?.engine.streamMel(chunk)
         }
 
+        // Graceful stop on audio interruption (phone call, Siri, etc.)
+        recorder.onInterruption = { [weak self] in
+            self?.stop()
+        }
+
+        // Sync silence detector with calibrated noise floor
+        recorder.onNoiseFloorCalibrated = { [weak self] noiseFloor in
+            self?.silenceDetector.updateThreshold(noiseFloor: noiseFloor)
+        }
+
         do {
             try recorder.start()
         } catch {

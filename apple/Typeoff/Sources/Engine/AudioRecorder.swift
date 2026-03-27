@@ -20,12 +20,31 @@ final class AudioRecorder: ObservableObject {
     /// Optional: stream audio to engine's mel processor for precomputation.
     var onAudioChunk: (([Float]) -> Void)?
 
+    /// Called when recording is interrupted (phone call, Siri, etc.)
+    var onInterruption: (() -> Void)?
+
+    /// Called once after noise floor calibration (~0.5s) with the calibrated value.
+    var onNoiseFloorCalibrated: ((Float) -> Void)?
+    private var hasNotifiedCalibration = false
+
     // MARK: - Recording
 
     func start() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement)
         try session.setActive(true)
+
+        // Handle interruptions (phone call, Siri, etc.)
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let info = notification.userInfo,
+                  let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  typeValue == AVAudioSession.InterruptionType.began.rawValue else { return }
+            print("[Typeoff] Audio interrupted — stopping recording")
+            self?.onInterruption?()
+        }
 
         preprocessor.reset()
 
@@ -53,6 +72,12 @@ final class AudioRecorder: ObservableObject {
             self.buffer.append(contentsOf: samples)
             self.bufferLock.unlock()
 
+            // Notify when noise floor is calibrated (once)
+            if !self.hasNotifiedCalibration && self.preprocessor.isCalibrated {
+                self.hasNotifiedCalibration = true
+                self.onNoiseFloorCalibrated?(self.preprocessor.noiseFloor)
+            }
+
             // Stream to mel processor (precompute mel frames)
             self.onAudioChunk?(samples)
         }
@@ -77,6 +102,7 @@ final class AudioRecorder: ObservableObject {
     func stop() -> [Float] {
         durationTimer?.invalidate()
         durationTimer = nil
+        NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
 
         audioEngine?.inputNode.removeTap(onBus: 0)
         audioEngine?.stop()

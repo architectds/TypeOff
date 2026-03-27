@@ -1,19 +1,26 @@
 import Foundation
 import Accelerate
 
-/// Detects silence in audio buffer tail. Lightweight — only scans recent audio.
+/// Detects silence in audio buffer tail. Uses adaptive threshold
+/// that syncs with AudioPreprocessor's noise floor calibration.
 struct SilenceDetector {
 
-    let silenceThreshold: Float = 0.005
+    var silenceThreshold: Float = 0.005  // Updated by preprocessor after calibration
     let silenceDuration: TimeInterval = 5.0
     let sampleRate: Int = 16000
+
+    /// Update threshold from preprocessor's calibrated noise floor.
+    /// Call after preprocessor finishes calibration (~0.5s).
+    mutating func updateThreshold(noiseFloor: Float, margin: Float = 3.0) {
+        silenceThreshold = noiseFloor * margin
+        print("[Typeoff] Silence threshold updated: \(String(format: "%.4f", silenceThreshold))")
+    }
 
     /// Check if the audio tail is all silence (user stopped speaking).
     func detectEndOfSpeech(audio: [Float]) -> Bool {
         let silenceSamples = Int(silenceDuration) * sampleRate
         guard audio.count >= silenceSamples else { return false }
 
-        // Only check the tail
         let tail = Array(audio.suffix(silenceSamples))
 
         // Check in 500ms windows
@@ -22,10 +29,10 @@ struct SilenceDetector {
             let end = min(i + windowSize, tail.count)
             let chunk = Array(tail[i..<end])
             if rms(chunk) >= silenceThreshold {
-                return false  // Found speech — not silent
+                return false
             }
         }
-        return true  // All silence
+        return true
     }
 
     /// Check if audio contains any speech at all.
@@ -56,7 +63,6 @@ struct SilenceDetector {
         return false
     }
 
-    /// RMS energy of audio chunk — uses Accelerate for speed.
     private func rms(_ samples: [Float]) -> Float {
         guard !samples.isEmpty else { return 0 }
         var result: Float = 0

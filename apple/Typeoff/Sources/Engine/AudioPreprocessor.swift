@@ -22,7 +22,9 @@ final class AudioPreprocessor {
     private let lowpassCoeffs: BiquadCoeffs    // 8000 Hz low-pass
 
     // Adaptive noise gate — learns background noise level in first 0.5s
-    private var noiseFloor: Float = 0.003       // Initial conservative estimate
+    /// Calibrated noise floor — exposed so SilenceDetector can sync.
+    private(set) var noiseFloor: Float = 0.003
+    private(set) var isCalibrated: Bool = false
     private var noiseFloorSamples: Int = 0      // How many calibration samples seen
     private var noiseFloorSum: Float = 0        // Running sum for calibration
     private let calibrationDuration: Int = 8000 // 0.5s at 16kHz — learn noise floor
@@ -66,6 +68,7 @@ final class AudioPreprocessor {
         highpassState = BiquadState()
         lowpassState = BiquadState()
         noiseFloor = 0.003
+        isCalibrated = false
         noiseFloorSamples = 0
         noiseFloorSum = 0
     }
@@ -90,6 +93,7 @@ final class AudioPreprocessor {
                 if noiseFloorSamples >= calibrationDuration {
                     let windowCount = Float(calibrationDuration) / Float(windowSize)
                     noiseFloor = max(noiseFloorSum / windowCount, 0.001)
+                    isCalibrated = true
                     print("[Typeoff] Noise floor calibrated: \(String(format: "%.4f", noiseFloor)) RMS")
                 }
             }

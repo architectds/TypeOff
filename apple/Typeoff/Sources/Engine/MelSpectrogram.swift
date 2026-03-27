@@ -134,7 +134,11 @@ final class MelSpectrogram {
             melFrame[m] = sum
         }
 
-        // Log mel: log10(max(mel, 1e-10))
+        // Log mel: Whisper uses natural log, then normalizes to [-1, 1]
+        // Exact spec from openai/whisper/audio.py:
+        //   log_spec = torch.clamp(mel_spec, min=1e-10).log10()
+        //   log_spec = torch.maximum(log_spec, log_spec.max() - 8.0)
+        //   log_spec = (log_spec + 4.0) / 4.0
         let floor: Float = 1e-10
         for i in 0..<nMels {
             melFrame[i] = log10(max(melFrame[i], floor))

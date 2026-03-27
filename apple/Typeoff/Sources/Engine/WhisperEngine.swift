@@ -13,18 +13,17 @@ final class WhisperEngine: ObservableObject {
 
     init(modelVariant: String = "base") {}
 
+    // MARK: - Model lifecycle
+
     func loadModel() async {
-        guard whisperKit == nil else {
-            isModelLoaded = true
-            return
-        }
+        guard whisperKit == nil else { return }
 
         loadingProgress = "Loading model..."
-        print("[Typeoff] Loading WhisperKit base model...")
+        print("[Typeoff] Loading WhisperKit model...")
 
         do {
-            let config = WhisperKitConfig(model: "base", verbose: true)
-            whisperKit = try await WhisperKit(config)
+            // Let WhisperKit auto-select the best model for this device
+            whisperKit = try await WhisperKit()
             isModelLoaded = true
             loadingProgress = ""
             print("[Typeoff] WhisperKit ready")
@@ -39,6 +38,8 @@ final class WhisperEngine: ObservableObject {
         isModelLoaded = false
     }
 
+    // MARK: - Transcription
+
     func transcribe(audioSamples: [Float]) async -> String {
         guard let wk = whisperKit else { return "" }
 
@@ -48,11 +49,7 @@ final class WhisperEngine: ObservableObject {
         let startTime = CFAbsoluteTimeGetCurrent()
 
         do {
-            let options = DecodingOptions(
-                task: .transcribe,
-                language: nil
-            )
-            let result = try await wk.transcribe(audioArray: audioSamples, decodeOptions: options)
+            let result = try await wk.transcribe(audioArray: audioSamples)
             let text = result.map { $0.text }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
             let elapsed = CFAbsoluteTimeGetCurrent() - startTime
             print("[Typeoff] \(String(format: "%.2f", elapsed))s: \"\(text.prefix(80))\"")

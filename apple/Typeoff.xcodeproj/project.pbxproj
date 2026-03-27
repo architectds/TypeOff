@@ -10,22 +10,15 @@
 		0C73CCBED39EFEBEBD13E28B /* MelSpectrogramTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1ED89D3D51D3BB8AC16C59 /* MelSpectrogramTests.swift */; };
 		0EA9E9B8A05DB9EE9F8D5744 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C401BF13A1A047FDE403647C /* AudioRecorder.swift */; };
 		12216C9E08689E9D4976584F /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 68B8C3EBD351B53063513649 /* WhisperKit */; };
-		19BE6118B298FEFEF6B4AA3C /* WhisperPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B4142BFF61C435932DB27F7 /* WhisperPipeline.swift */; };
-		20595BF325F2641EA1D608C3 /* MelSpectrogram.swift in Sources */ = {isa = PBXBuildFile; fileRef = E38618CDDA50DCB8B9800CCD /* MelSpectrogram.swift */; };
 		400277AB49D2E857D487500B /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C6318F417D976BFD530F36C /* ProfileView.swift */; };
 		4C319BE53E179A396D483A06 /* StoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 674405B1CCF31CAE3C7E0F4E /* StoreManager.swift */; };
 		4C57601B3314B08D898F29AF /* TrialManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4E9DFE483FA8AED3CD83F4 /* TrialManager.swift */; };
 		621112843038F39CEE0DA2E8 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B255C5C571A1BDC3F04D18A /* KeyboardView.swift */; };
-		6E374846147B73BBC340CA6A /* ModelDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5DE5E3C13F9F5FC11AF1C4 /* ModelDownloader.swift */; };
 		991B300B06D9530970B6E386 /* WhisperPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580324C3EAE16A45B06F52FB /* WhisperPipelineTests.swift */; };
 		9C79690273DB266EA6C39808 /* NotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3103FC1497932FC9797515 /* NotesView.swift */; };
 		9EF1EF23037B4C75251F9634 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3E14FF979E750F50870CF5 /* OnboardingView.swift */; };
-		A2076E571A3DE94442580A84 /* SilenceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1ADBEE23DEE85F3976240B3 /* SilenceDetector.swift */; };
-		A50D061B794C1061DBBE17BB /* WhisperTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBCC0DECF4C2BA7EB17982EF /* WhisperTokenizer.swift */; };
 		A952A07055AE649F0C82F8FE /* WhisperEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8AC1D5F5AFE72CFB24979E3 /* WhisperEngine.swift */; };
-		B80EC5FBE9659601569E5B18 /* vocab.json in Resources */ = {isa = PBXBuildFile; fileRef = 080F47346B6FD43956CF4DA5 /* vocab.json */; };
 		BF86EED7D25C22F301EEAFF4 /* SilenceDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A6BDA1C09389B8570E4346 /* SilenceDetectorTests.swift */; };
-		C0CA756C1EA2DA6D8DC3D72F /* AudioPreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD743CAD035E9E817FF84AD5 /* AudioPreprocessor.swift */; };
 		CBFC43483B0DFE0DA42A3578 /* TrialManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4E9DFE483FA8AED3CD83F4 /* TrialManager.swift */; };
 		D00EAA46FEA64975C1191F33 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B3D4B1F3C9C9AC3D57AD68 /* SettingsView.swift */; };
 		E2F07CD8B7A78EFDACC5CDE7 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 809AFA43B49C1CAA5B7E0EE1 /* KeyboardViewController.swift */; };
@@ -46,32 +39,25 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		080F47346B6FD43956CF4DA5 /* vocab.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vocab.json; sourceTree = "<group>"; };
 		0A1ED89D3D51D3BB8AC16C59 /* MelSpectrogramTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelSpectrogramTests.swift; sourceTree = "<group>"; };
 		0B4E9DFE483FA8AED3CD83F4 /* TrialManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialManager.swift; sourceTree = "<group>"; };
-		2B4142BFF61C435932DB27F7 /* WhisperPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperPipeline.swift; sourceTree = "<group>"; };
 		32A6BDA1C09389B8570E4346 /* SilenceDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilenceDetectorTests.swift; sourceTree = "<group>"; };
 		43445E53417AD5095831716C /* AudioPreprocessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPreprocessorTests.swift; sourceTree = "<group>"; };
 		572BB085B1B08F4B1E480F53 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		580324C3EAE16A45B06F52FB /* WhisperPipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperPipelineTests.swift; sourceTree = "<group>"; };
 		61FFD34A5A9812696C30794E /* WhisperTokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperTokenizerTests.swift; sourceTree = "<group>"; };
 		674405B1CCF31CAE3C7E0F4E /* StoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreManager.swift; sourceTree = "<group>"; };
-		6D5DE5E3C13F9F5FC11AF1C4 /* ModelDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloader.swift; sourceTree = "<group>"; };
 		7B255C5C571A1BDC3F04D18A /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
 		809AFA43B49C1CAA5B7E0EE1 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		8C3E14FF979E750F50870CF5 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		8C6318F417D976BFD530F36C /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		9F3103FC1497932FC9797515 /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
 		A8A1DAAFD8ACAC7D28703814 /* TypeoffApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeoffApp.swift; sourceTree = "<group>"; };
-		AD743CAD035E9E817FF84AD5 /* AudioPreprocessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPreprocessor.swift; sourceTree = "<group>"; };
 		C401BF13A1A047FDE403647C /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		C4B3D4B1F3C9C9AC3D57AD68 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		D1ADBEE23DEE85F3976240B3 /* SilenceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilenceDetector.swift; sourceTree = "<group>"; };
 		DAFFCDFE7635CB0EB450A2D7 /* TypeoffKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TypeoffKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		DBCC0DECF4C2BA7EB17982EF /* WhisperTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperTokenizer.swift; sourceTree = "<group>"; };
 		E0A2F2B1A6F6A59C0AFC37B5 /* Typeoff.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Typeoff.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1EA7A7D28836735F447E458 /* TypeoffTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TypeoffTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		E38618CDDA50DCB8B9800CCD /* MelSpectrogram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MelSpectrogram.swift; sourceTree = "<group>"; };
 		F8AC1D5F5AFE72CFB24979E3 /* WhisperEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperEngine.swift; sourceTree = "<group>"; };
 		F8F2671B4261324ADD9C0E59 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -105,15 +91,8 @@
 		65C80FC99E1202B36F6EC10E /* Engine */ = {
 			isa = PBXGroup;
 			children = (
-				AD743CAD035E9E817FF84AD5 /* AudioPreprocessor.swift */,
 				C401BF13A1A047FDE403647C /* AudioRecorder.swift */,
-				E38618CDDA50DCB8B9800CCD /* MelSpectrogram.swift */,
-				6D5DE5E3C13F9F5FC11AF1C4 /* ModelDownloader.swift */,
-				D1ADBEE23DEE85F3976240B3 /* SilenceDetector.swift */,
-				080F47346B6FD43956CF4DA5 /* vocab.json */,
 				F8AC1D5F5AFE72CFB24979E3 /* WhisperEngine.swift */,
-				2B4142BFF61C435932DB27F7 /* WhisperPipeline.swift */,
-				DBCC0DECF4C2BA7EB17982EF /* WhisperTokenizer.swift */,
 			);
 			name = Engine;
 			path = Typeoff/Sources/Engine;
@@ -201,7 +180,6 @@
 			buildConfigurationList = B1B3530056F82388DE1AE0C6 /* Build configuration list for PBXNativeTarget "Typeoff" */;
 			buildPhases = (
 				D619396746420DDBA57031F7 /* Sources */,
-				41D697304FD6DD69FFADE03A /* Resources */,
 				60557DE7DE62E193F5FC208A /* Frameworks */,
 			);
 			buildRules = (
@@ -280,17 +258,6 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXResourcesBuildPhase section */
-		41D697304FD6DD69FFADE03A /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				B80EC5FBE9659601569E5B18 /* vocab.json in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		5CE4325B90052BA2D3CBFC21 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -318,22 +285,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C0CA756C1EA2DA6D8DC3D72F /* AudioPreprocessor.swift in Sources */,
 				0EA9E9B8A05DB9EE9F8D5744 /* AudioRecorder.swift in Sources */,
-				20595BF325F2641EA1D608C3 /* MelSpectrogram.swift in Sources */,
-				6E374846147B73BBC340CA6A /* ModelDownloader.swift in Sources */,
 				9C79690273DB266EA6C39808 /* NotesView.swift in Sources */,
 				9EF1EF23037B4C75251F9634 /* OnboardingView.swift in Sources */,
 				400277AB49D2E857D487500B /* ProfileView.swift in Sources */,
 				D00EAA46FEA64975C1191F33 /* SettingsView.swift in Sources */,
-				A2076E571A3DE94442580A84 /* SilenceDetector.swift in Sources */,
 				4C319BE53E179A396D483A06 /* StoreManager.swift in Sources */,
 				E5A6E3F19E5E50703F23B2FA /* Theme.swift in Sources */,
 				CBFC43483B0DFE0DA42A3578 /* TrialManager.swift in Sources */,
 				F59784C26C62C0A19050D8C2 /* TypeoffApp.swift in Sources */,
 				A952A07055AE649F0C82F8FE /* WhisperEngine.swift in Sources */,
-				19BE6118B298FEFEF6B4AA3C /* WhisperPipeline.swift in Sources */,
-				A50D061B794C1061DBBE17BB /* WhisperTokenizer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <text x="4" y="50" font-family="SF Pro Display, -apple-system, Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="58" fill="#000000" letter-spacing="-3">T</text>
-  <circle cx="48" cy="38" r="9.5" fill="#000000"/>
+  <text x="0" y="52" font-family="SF Pro Display, -apple-system, Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="62" fill="#FFFFFF" letter-spacing="-3">T</text>
+  <circle cx="50" cy="40" r="10" fill="#FFFFFF"/>
 </svg>

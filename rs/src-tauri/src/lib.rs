@@ -382,6 +382,9 @@ pub fn run() {
         }
     });
 
+    // Clone ref for cleanup on exit
+    let transcriber_cleanup = Arc::clone(&tauri_state.transcriber);
+
     tauri::Builder::default()
         .manage(tauri_state)
         .invoke_handler(tauri::generate_handler![
@@ -393,6 +396,15 @@ pub fn run() {
             get_hotkeys,
             toggle_recording,
         ])
+        .on_window_event(move |_window, event| {
+            // Drop Metal-backed models BEFORE process exit to avoid
+            // ggml_metal_rsets_free abort during __cxa_finalize_ranges
+            if let tauri::WindowEvent::Destroyed = event {
+                if let Ok(mut t) = transcriber_cleanup.lock() {
+                    *t = None; // drop Transcriber → drops WhisperContext → clean Metal free
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running Typeoff");
 }

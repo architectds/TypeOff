@@ -2,10 +2,12 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 use crate::config::Config;
 
-/// Suppress all whisper.cpp / ggml internal logging.
+/// Suppress verbose whisper.cpp / ggml internal logging.
+/// Uses env var to reduce noise. Only suppresses debug-level output,
+/// not errors.
 fn suppress_whisper_logging() {
-    // Set GGML_LOG_LEVEL to suppress verbose output
-    std::env::set_var("GGML_LOG_LEVEL", "0");
+    // WARN level: show only warnings and errors, suppress info/debug
+    std::env::set_var("GGML_LOG_LEVEL", "2");
 }
 
 pub struct Transcriber {

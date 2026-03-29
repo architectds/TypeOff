@@ -3,36 +3,64 @@
 Offline speech-to-text. Press a hotkey, speak, text appears in your active app. No cloud, no API keys, fully local.
 
 ![Rust](https://img.shields.io/badge/Rust-working-green)
-![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/Platform-Mac%20%7C%20Windows%20%7C%20Linux-lightgrey)
 
-## Project Structure
+## Download
 
-```
-typeoff/
-├── rs/        ← Rust version (primary, cross-platform, Tauri UI)
-├── python/    ← Python version (reference implementation)
-└── asset/     ← Shared assets (logo, icons)
-```
+Go to [Releases](https://github.com/architectds/typeoff/releases) and download for your platform:
+
+| Installer | Platform | GPU | Notes |
+|-----------|----------|-----|-------|
+| `Typeoff-Mac-AppleSilicon.dmg` | Mac M1/M2/M3/M4 | Metal ✓ | Fast (~0.5s/pass) |
+| `Typeoff-Mac-Intel.dmg` | Mac Intel | CPU | Slower (~3.5s/pass) |
+| `Typeoff-Win-CPU.exe` | Windows (any) | CPU | Works everywhere |
+| `Typeoff-Win-GPU.exe` | Windows + NVIDIA | CUDA 12+ | Fast, needs driver 535+ |
+
+No Rust, no cmake, no compilation. Download, install, run.
+
+The app downloads the Whisper model (~465MB) on first launch.
 
 ## How it works
 
-1. Double-tap **Shift** (configurable)
+1. Double-tap **Shift** to start recording
 2. Speak — text streams in real-time
-3. Confirmed sentences are pasted into your active app as you speak
-4. When you stop, the remaining text is pasted
+3. Confirmed sentences are **pasted into your active app** as you speak
+4. Double-tap **Shift** again or wait for silence to stop
 
 ## Pipeline
 
 ```
-Mic → Bandpass Filter → VAD → Whisper → Streaming Agreement → Filler Removal → LLM Correction → Paste
-      (50-3400Hz)      (RMS)  (small)   (fuzzy 80% match)    (嗯/uh/um/那个)   (Qwen 0.5B)
+Mic → Bandpass Filter → VAD → Whisper → Streaming Agreement → Filler Removal → Auto-Paste
+      (50-3400Hz)      (RMS)  (small)   (fuzzy 80% match)    (嗯/uh/um/那个)   (Cmd+V/Ctrl+V)
 ```
 
-Everything runs locally. ~1GB memory (Whisper 500MB + Qwen 500MB). Metal GPU on Apple Silicon, CUDA on Windows/Linux.
+Everything runs locally. ~500MB memory. No internet needed after model download.
 
-## Build & Run
+## Features
+
+- **Fully offline** — no cloud, no API keys, no data leaves your machine
+- **Streaming flush** — sentences paste as you speak, not after you stop
+- **GPU accelerated** — Metal (Apple Silicon), CUDA 12+ (NVIDIA), CPU fallback
+- **Fuzzy agreement** — 80% token match confirms text, tolerates Whisper variance
+- **Voice filter** — 50-3400Hz bandpass removes keyboard/HVAC/electronic noise
+- **Filler removal** — strips "嗯", "那个", "uh", "um" automatically
+- **CJK-aware** — per-character tokenization for Chinese/Japanese/Korean
+- **Multilingual** — 99 languages via Whisper, auto-detect
+- **System tray** — runs in background, double-click tray icon to show UI
+- **Auto-start** — optional launch at login
+
+### Streaming Algorithm
+
+```
+Pass 1: "今天天气很好"              → baseline
+Pass 2: "今天天气很好，我们去公园"    → fuzzy agree (80%+) → LOCK "今天天气很好，" → paste
+Pass 3 (new window): "我们去公园玩"  → continue...
+
+Fail safe: after 3 passes without LOCK → push to last punctuation
+```
+
+## Build from Source (Developers)
 
 ### Prerequisites (one-time)
 
@@ -55,85 +83,65 @@ cargo install tauri-cli
 
 ```bash
 cd rs
-cargo tauri dev          # ← This is the ONLY command you need
+cargo tauri dev          # ← The ONLY command you need
 ```
 
-**IMPORTANT:** Do NOT run `cargo run` or `cargo build` directly — that builds the CLI binary separately and wastes time. Always use `cargo tauri dev` which builds only the Tauri app.
+**IMPORTANT:** Do NOT run `cargo run` or `cargo build` — that builds the CLI binary separately and wastes time. Always use `cargo tauri dev`.
 
-### Build installer (for distribution)
+### Build installers
 
 ```bash
 cd rs
-cargo tauri build        # Produces .dmg (Mac) or .exe/.msi (Windows)
+cargo tauri build                # CPU build (Mac or Windows)
+cargo tauri build --features cuda  # Windows GPU build (needs CUDA Toolkit 12+)
 ```
 
-The app downloads the Whisper model on first launch — no manual model setup needed.
+### CI/CD
 
-### Rust Dependencies
+GitHub Actions automatically builds all 4 installers on git tag:
+
+```bash
+git tag v0.2.0
+git push --tags
+# → Mac Intel .dmg, Mac Silicon .dmg, Win CPU .exe, Win GPU .exe
+# → Uploaded to GitHub Releases
+```
+
+## Architecture
+
+```
+rs/
+  src/
+    lib.rs               — Pipeline module exports
+    config.rs            — JSON settings, model path search
+    recorder.rs          — Audio capture (cpal, 48kHz→16kHz resampling)
+    audio_filter.rs      — Bandpass filter (50-3400Hz, biquad)
+    vad.rs               — Voice activity detection (RMS energy)
+    transcriber.rs       — Whisper inference (whisper-rs, Metal/CUDA/CPU)
+    streamer.rs          — Streaming agreement (fuzzy 80% + fail-safe)
+    fillers.rs           — Filler removal (Chinese + English + stutter)
+    corrector.rs         — LLM correction (Qwen 0.5B via llama-cpp-2)
+    hotkey.rs            — Double-shift detection (rdev)
+    paster.rs            — Auto-paste (CGEvent on Mac, enigo on Win/Linux)
+  src-tauri/
+    src/lib.rs           — Tauri commands, system tray, session management
+    tauri.conf.json      — Window config, permissions
+  ui/
+    index.html           — Webview UI (Catppuccin dark theme)
+```
+
+### Dependencies
 
 | Component | Crate | Purpose |
 |-----------|-------|---------|
-| Whisper inference | `whisper-rs` 0.16 | whisper.cpp, Metal/CUDA/CPU |
-| LLM correction | `llama-cpp-2` 0.1 | Qwen 0.5B via llama.cpp |
-| Audio capture | `cpal` 0.15 | CoreAudio/WASAPI/ALSA |
-| Audio filter | `biquad` 0.4 | Bandpass 50-3400Hz |
-| Hotkey | `rdev` (fufesou fork) | Double-shift detection |
+| Whisper | `whisper-rs` 0.16 | whisper.cpp bindings, Metal/CUDA/CPU |
+| LLM | `llama-cpp-2` 0.1 | Qwen 0.5B correction via llama.cpp |
+| Audio | `cpal` 0.15 | CoreAudio / WASAPI / ALSA |
+| Filter | `biquad` 0.4 | Bandpass 50-3400Hz |
+| Hotkey | `rdev` (fufesou fork) | Double-shift, fixes macOS TSM crash |
 | Clipboard | `arboard` 3 | Cross-platform clipboard |
-| Paste sim | `enigo` 0.2 / osascript | Cmd+V (Mac) / Ctrl+V |
-| Filler removal | `regex` 1 | Chinese + English fillers |
-| Desktop UI | `tauri` 2 | Webview shell + system tray |
-
-### Platform Support
-
-| | Mac (Apple Silicon) | Mac (Intel) | Windows | Linux |
-|---|---|---|---|---|
-| Whisper | Metal GPU | CPU | CUDA / CPU | CUDA / CPU |
-| LLM (Qwen) | Metal GPU | CPU | CUDA / CPU | CUDA / CPU |
-| Audio | CoreAudio | CoreAudio | WASAPI | ALSA/Pulse |
-| Hotkey | ✓ | ✓ | ✓ | X11 only |
-| Paste | osascript | osascript | enigo | enigo |
-| UI | WKWebView | WKWebView | WebView2 | WebKitGTK |
-
-## Python Version (python/)
-
-Reference implementation. Feature-complete with webview UI.
-
-```bash
-cd python
-pip install -r requirements-win.txt
-python typeoff.py
-```
-
-## Features
-
-- **Fully offline** — no internet needed after model download
-- **GPU accelerated** — Metal (Mac), CUDA (Win/Linux), CPU fallback
-- **Streaming transcription** — see text as you speak, not after
-- **Fuzzy LocalAgreement** — 80% token match confirms text, tolerates Whisper variance
-- **Fail safe** — after 3 passes, force push to last punctuation
-- **Voice bandpass filter** — 50-3400Hz, removes keyboard/HVAC/electronic noise
-- **Auto-paste** — confirmed sentences paste directly into active app
-- **CJK-aware** — per-character tokenization for Chinese/Japanese/Korean
-- **Filler removal** — strips "嗯", "那个", "uh", "um" etc.
-- **LLM correction** — Qwen2.5-0.5B fixes homophones (optional, via llama.cpp)
-- **Multilingual** — 99 languages via Whisper, auto-detect
-- **GPU accelerated** — Metal (Apple Silicon), CUDA (Win/Linux), auto-detect with CPU fallback
-
-### Streaming Algorithm
-
-```
-Pass 1: "今天天气很好"              → baseline
-Pass 2: "今天天气很好，我们去公园"    → fuzzy agree (80%+) → LOCK "今天天气很好，" → paste
-Pass 3 (new window): "我们去公园玩"  → continue...
-
-Fail safe: after 3 passes without LOCK → push to last punctuation
-```
-
-## Coming Soon
-
-- **Tauri v2 UI** — webview shell + system tray + settings
-- **LLM correction** — Qwen2.5-0.5B homophone fixes via llama.cpp
-- **Model auto-download** — fetch on first run
+| Paste | `core-graphics` 0.23 | CGEvent Cmd+V on macOS |
+| UI | `tauri` 2.10 | Desktop app, system tray, webview |
 
 ## License
 

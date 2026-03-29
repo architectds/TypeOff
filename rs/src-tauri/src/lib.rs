@@ -69,7 +69,7 @@ fn set_tray_recording(app: &tauri::AppHandle, recording: bool) {
 // ─── Models / Languages / Hotkeys lists ──────────────────────────
 
 #[derive(Serialize)]
-struct ModelInfo { id: String, name: String, desc: String }
+struct ModelInfo { id: String, name: String, desc: String, size: String, url: String }
 
 #[derive(Serialize)]
 struct LangInfo { id: String, name: String }
@@ -77,13 +77,43 @@ struct LangInfo { id: String, name: String }
 #[derive(Serialize)]
 struct HotkeyInfo { id: String, name: String }
 
+#[derive(Serialize)]
+struct ModelStatus { installed: bool, path: String, model: String }
+
+const WHISPER_BASE_URL: &str = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
+
 fn get_models_list() -> Vec<ModelInfo> {
     vec![
-        ModelInfo { id: "small".into(), name: "Small".into(), desc: "~460MB, good balance (multilingual)".into() },
-        ModelInfo { id: "base".into(), name: "Base".into(), desc: "~140MB, fast, basic accuracy".into() },
-        ModelInfo { id: "tiny".into(), name: "Tiny".into(), desc: "~75MB, fastest, lower accuracy".into() },
-        ModelInfo { id: "medium".into(), name: "Medium".into(), desc: "~1.5GB, high accuracy".into() },
-        ModelInfo { id: "large-v3".into(), name: "Large v3".into(), desc: "~3GB, best accuracy, slowest".into() },
+        ModelInfo {
+            id: "small".into(), name: "Small".into(),
+            desc: "Good balance (multilingual)".into(),
+            size: "465 MB".into(),
+            url: format!("{}/ggml-small.bin", WHISPER_BASE_URL),
+        },
+        ModelInfo {
+            id: "base".into(), name: "Base".into(),
+            desc: "Fast, basic accuracy".into(),
+            size: "142 MB".into(),
+            url: format!("{}/ggml-base.bin", WHISPER_BASE_URL),
+        },
+        ModelInfo {
+            id: "tiny".into(), name: "Tiny".into(),
+            desc: "Fastest, lower accuracy".into(),
+            size: "75 MB".into(),
+            url: format!("{}/ggml-tiny.bin", WHISPER_BASE_URL),
+        },
+        ModelInfo {
+            id: "medium".into(), name: "Medium".into(),
+            desc: "High accuracy, slower".into(),
+            size: "1.5 GB".into(),
+            url: format!("{}/ggml-medium.bin", WHISPER_BASE_URL),
+        },
+        ModelInfo {
+            id: "large-v3".into(), name: "Large v3".into(),
+            desc: "Best accuracy, slowest".into(),
+            size: "3.1 GB".into(),
+            url: format!("{}/ggml-large-v3.bin", WHISPER_BASE_URL),
+        },
     ]
 }
 
@@ -147,6 +177,73 @@ fn get_languages() -> Vec<LangInfo> { get_languages_list() }
 
 #[tauri::command]
 fn get_hotkeys() -> Vec<HotkeyInfo> { get_hotkeys_list() }
+
+/// Check if the current whisper model is installed
+#[tauri::command]
+fn check_model(state: tauri::State<TauriState>) -> ModelStatus {
+    let config = state.config.lock().unwrap();
+    let path = config.get_model_path();
+    let installed = std::path::Path::new(&path).exists();
+    ModelStatus {
+        installed,
+        path,
+        model: config.model.clone(),
+    }
+}
+
+/// Download a whisper model file. Returns progress messages via state.
+#[tauri::command]
+fn download_model(state: tauri::State<TauriState>, model_id: String) -> Result<String, String> {
+    let models = get_models_list();
+    let model = models.iter().find(|m| m.id == model_id)
+        .ok_or_else(|| format!("Unknown model: {}", model_id))?;
+
+    let models_dir = Config::models_dir();
+    let dest = models_dir.join(format!("ggml-{}.bin", model_id));
+
+    if dest.exists() {
+        return Ok(format!("Model already exists: {}", dest.display()));
+    }
+
+    // Update UI message
+    {
+        let mut s = state.state.lock().unwrap();
+        s.status = "loading".into();
+        s.message = format!("Downloading {} ({})...", model.name, model.size);
+    }
+
+    // Download using curl (available on Mac/Win/Linux)
+    let result = std::process::Command::new("curl")
+        .args(["-L", "-o", &dest.to_string_lossy(), &model.url])
+        .output();
+
+    match result {
+        Ok(output) if output.status.success() => {
+            // Reload the model
+            let config = state.config.lock().unwrap().clone();
+            let t = Transcriber::new(&config);
+            *state.transcriber.lock().unwrap() = Some(t);
+
+            let mut s = state.state.lock().unwrap();
+            s.status = "ready".into();
+            s.message = format!("Ready — whisper-{}", model_id);
+
+            Ok(format!("Downloaded to {}", dest.display()))
+        }
+        Ok(output) => {
+            let mut s = state.state.lock().unwrap();
+            s.status = "ready".into();
+            s.message = "Download failed".into();
+            Err(format!("curl failed: {}", String::from_utf8_lossy(&output.stderr)))
+        }
+        Err(e) => {
+            let mut s = state.state.lock().unwrap();
+            s.status = "ready".into();
+            s.message = "Download failed".into();
+            Err(format!("Failed to run curl: {}", e))
+        }
+    }
+}
 
 #[tauri::command]
 fn toggle_recording(state: tauri::State<TauriState>) {
@@ -443,6 +540,8 @@ pub fn run() {
             get_models,
             get_languages,
             get_hotkeys,
+            check_model,
+            download_model,
             toggle_recording,
         ])
         .setup(|app| {

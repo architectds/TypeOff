@@ -460,19 +460,61 @@
       config = await invoke('get_config');
       await populateSettings();
       await initAutostart();
+      await checkModelStatus();
     } catch(e) {
       setTimeout(init, 500);
     }
   }
   window.addEventListener('DOMContentLoaded', () => setTimeout(init, 300));
 
+  // ─── Model download ───
+  let allModels = [];
+
+  async function checkModelStatus() {
+    try {
+      const status = await invoke('check_model');
+      if (!status.installed) {
+        // Show download prompt
+        const model = allModels.find(m => m.id === status.model);
+        const size = model ? model.size : '~500MB';
+        document.getElementById('textContent').className = 'text-content empty';
+        document.getElementById('textContent').innerHTML =
+          `<div style="text-align:center; padding: 20px 0;">
+            <div style="font-size: 13px; color: #cdd6f4; margin-bottom: 8px;">
+              Model <b>${status.model}</b> not found
+            </div>
+            <div style="font-size: 11px; color: #6c7086; margin-bottom: 12px;">
+              Download required (${size})
+            </div>
+            <button class="btn primary" style="padding: 8px 20px;" onclick="downloadCurrentModel()">
+              Download Model
+            </button>
+          </div>`;
+      }
+    } catch(e) {}
+  }
+
+  async function downloadCurrentModel() {
+    const modelId = config.model || 'small';
+    document.getElementById('textContent').innerHTML =
+      '<div style="text-align:center; padding: 20px 0; color: #a6adc8;">Downloading model... This may take a few minutes.</div>';
+    try {
+      const result = await invoke('download_model', { modelId });
+      showToast('Model downloaded!');
+      await checkModelStatus();
+    } catch(e) {
+      document.getElementById('textContent').innerHTML =
+        `<div style="text-align:center; padding: 20px 0; color: #f38ba8;">Download failed: ${e}</div>`;
+    }
+  }
+
   // ─── Settings population ───
   async function populateSettings() {
     // Models
-    const models = await invoke('get_models');
+    allModels = await invoke('get_models');
     const selModel = document.getElementById('setModel');
-    selModel.innerHTML = models.map(m =>
-      `<option value="${m.id}" ${m.id === config.model ? 'selected' : ''}>${m.name}</option>`
+    selModel.innerHTML = allModels.map(m =>
+      `<option value="${m.id}" ${m.id === config.model ? 'selected' : ''}>${m.name} (${m.size})</option>`
     ).join('');
     onModelChange();
 
@@ -513,15 +555,9 @@
   }
 
   function onModelChange() {
-    const descs = {
-      tiny: '~75MB, fastest, lower accuracy',
-      base: '~140MB, fast, basic accuracy',
-      small: '~460MB, good balance (recommended)',
-      medium: '~1.5GB, high accuracy, slower',
-      'large-v3': '~3GB, best accuracy, slowest'
-    };
     const val = document.getElementById('setModel').value;
-    document.getElementById('modelDesc').textContent = descs[val] || '';
+    const model = allModels.find(m => m.id === val);
+    document.getElementById('modelDesc').textContent = model ? model.desc : '';
   }
 
   function updateHotkeyHint() {

@@ -4764,6 +4764,7 @@ version = "0.2.0"
 dependencies = [
  "arboard",
  "biquad",
+ "core-graphics 0.23.2",
  "cpal",
  "dirs 6.0.0",
  "enigo",
@@ -4779,6 +4780,7 @@ dependencies = [
 name = "typeoff-app"
 version = "0.2.0"
 dependencies = [
+ "core-foundation 0.9.4",
  "serde",
  "serde_json",
  "tauri",

@@ -690,18 +690,31 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // ─── Request permissions on startup ─────────
-            // Trigger macOS Accessibility permission prompt immediately
-            // so user approves before first recording, not during paste
+            // ─── Request Accessibility permission on startup ─────
             #[cfg(target_os = "macos")]
             {
-                thread::spawn(|| {
-                    // This triggers the macOS permission dialog for System Events
-                    let _ = std::process::Command::new("osascript")
-                        .arg("-e")
-                        .arg("tell application \"System Events\" to keystroke \"\" using command down")
-                        .output();
-                });
+                // AXIsProcessTrustedWithOptions with prompt=true shows the
+                // macOS permission dialog if not yet granted. This is the
+                // standard way apps like Karabiner, Rectangle, etc. request it.
+                unsafe {
+                    extern "C" {
+                        fn AXIsProcessTrustedWithOptions(options: *const std::ffi::c_void) -> bool;
+                    }
+                    use core_foundation::base::TCFType;
+                    use core_foundation::boolean::CFBoolean;
+                    use core_foundation::dictionary::CFDictionary;
+                    use core_foundation::string::CFString;
+
+                    let key = CFString::new("AXTrustedCheckOptionPrompt");
+                    let value = CFBoolean::true_value();
+                    let options = CFDictionary::from_CFType_pairs(&[(key, value)]);
+                    let trusted = AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef() as *const _);
+                    if trusted {
+                        println!("[typeoff] Accessibility permission: granted");
+                    } else {
+                        println!("[typeoff] Accessibility permission: requesting...");
+                    }
+                }
             }
 
             Ok(())

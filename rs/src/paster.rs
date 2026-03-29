@@ -1,7 +1,7 @@
 /// Cross-platform text paste into active application.
 ///
-/// Port of python/engine/paster.py.
-/// Mac: Cmd+V, Windows/Linux: Ctrl+V.
+/// Mac: CGEvent Cmd+V (no osascript, no Accessibility workarounds)
+/// Windows/Linux: Ctrl+V via enigo
 
 use arboard::Clipboard;
 use std::thread;
@@ -27,10 +27,8 @@ pub fn paste_text(text: &str) {
         }
     }
 
-    thread::sleep(Duration::from_millis(50));
+    thread::sleep(Duration::from_millis(100));
 
-    // Simulate paste keystroke
-    // Each call creates a fresh Enigo — avoids stale state issues
     #[cfg(target_os = "macos")]
     paste_macos();
 
@@ -43,27 +41,44 @@ pub fn paste_text(text: &str) {
 
 #[cfg(target_os = "macos")]
 fn paste_macos() {
-    thread::sleep(Duration::from_millis(150));
+    // Use CGEvent directly — bypasses osascript permission issues
+    // CGEvent posting requires the app to have Accessibility permission,
+    // but works from any process (no parent chain dependency)
+    unsafe {
+        use core_graphics::event::{CGEvent, CGEventFlags, CGKeyCode, EventField};
+        use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
-    // Try osascript first (needs Accessibility permission for parent process)
-    let output = std::process::Command::new("osascript")
-        .arg("-e")
-        .arg("tell application \"System Events\" to keystroke \"v\" using command down")
-        .output();
+        let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState);
+        let source = match source {
+            Ok(s) => s,
+            Err(_) => {
+                eprintln!("[typeoff] CGEvent source failed, trying enigo fallback");
+                paste_macos_enigo();
+                return;
+            }
+        };
 
-    match output {
-        Ok(o) if o.status.success() => return,
-        Ok(o) => {
-            let stderr = String::from_utf8_lossy(&o.stderr);
-            eprintln!("[typeoff] osascript paste blocked: {}", stderr);
-            eprintln!("[typeoff] Falling back to enigo...");
+        // Key code 9 = 'v' on macOS
+        const V_KEY: CGKeyCode = 9;
+
+        // Cmd+V down
+        if let Ok(event) = CGEvent::new_keyboard_event(source.clone(), V_KEY, true) {
+            event.set_flags(CGEventFlags::CGEventFlagCommand);
+            event.post(core_graphics::event::CGEventTapLocation::HID);
         }
-        Err(e) => {
-            eprintln!("[typeoff] osascript error: {}", e);
+
+        thread::sleep(Duration::from_millis(20));
+
+        // Cmd+V up
+        if let Ok(event) = CGEvent::new_keyboard_event(source, V_KEY, false) {
+            event.set_flags(CGEventFlags::CGEventFlagCommand);
+            event.post(core_graphics::event::CGEventTapLocation::HID);
         }
     }
+}
 
-    // Fallback: try enigo (also needs Accessibility but different code path)
+#[cfg(target_os = "macos")]
+fn paste_macos_enigo() {
     use enigo::{Enigo, Key, Keyboard, Settings};
     if let Ok(mut enigo) = Enigo::new(&Settings::default()) {
         let _ = enigo.key(Key::Meta, enigo::Direction::Press);

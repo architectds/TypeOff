@@ -404,6 +404,21 @@
         </div>
       </div>
 
+      <!-- System -->
+      <div class="settings-section">
+        <div class="settings-section-title">System</div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Start at login</div>
+            <div class="setting-desc">Launch Typeoff when you log in</div>
+          </div>
+          <label class="setting-toggle">
+            <input type="checkbox" id="setAutostart" onchange="toggleAutostart()">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
       <!-- Debug -->
       <div class="settings-section">
         <div class="settings-section-title">Debug</div>
@@ -444,6 +459,7 @@
     try {
       config = await invoke('get_config');
       await populateSettings();
+      await initAutostart();
     } catch(e) {
       setTimeout(init, 500);
     }
@@ -512,6 +528,27 @@
     const hk = (config.hotkey || 'double_shift').replace('double_shift', 'Shift+Shift')
       .split('+').map(k => `<kbd>${k.charAt(0).toUpperCase() + k.slice(1)}</kbd>`).join(' + ');
     document.getElementById('hotkeyHint').innerHTML = hk;
+  }
+
+  // ─── Autostart ───
+  async function initAutostart() {
+    try {
+      const enabled = await invoke('plugin:autostart|is_enabled');
+      document.getElementById('setAutostart').checked = enabled;
+    } catch(e) {}
+  }
+
+  async function toggleAutostart() {
+    const checked = document.getElementById('setAutostart').checked;
+    try {
+      if (checked) {
+        await invoke('plugin:autostart|enable');
+      } else {
+        await invoke('plugin:autostart|disable');
+      }
+    } catch(e) {
+      console.error('Autostart error:', e);
+    }
   }
 
   async function saveSettings() {

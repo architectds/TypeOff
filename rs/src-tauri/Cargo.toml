@@ -6,8 +6,18 @@ description = "Typeoff desktop app — Tauri frontend"
 
 [dependencies]
 typeoff = { path = ".." }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+typeoff = { path = "..", features = ["metal"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+typeoff = { path = "..", features = ["cuda"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+typeoff = { path = "..", features = ["cuda"] }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

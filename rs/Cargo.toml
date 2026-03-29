@@ -15,9 +15,15 @@ path = "src/lib.rs"
 name = "typeoff"
 path = "src/main.rs"
 
+[features]
+default = []
+metal = ["whisper-rs/metal"]
+cuda = ["whisper-rs/cuda"]
+
 [dependencies]
 # Whisper inference (whisper.cpp bindings)
-whisper-rs = { version = "0.16", features = ["metal"] }
+# Build with --features metal (Mac) or --features cuda (Win/Linux)
+whisper-rs = "0.16"
 
 # Audio capture
 cpal = "0.15"

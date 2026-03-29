@@ -3,6 +3,9 @@ use std::panic;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use tauri::Manager;
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use tauri::tray::TrayIconBuilder;
 
 use typeoff::audio_filter;
 use typeoff::config::Config;
@@ -386,6 +389,10 @@ pub fn run() {
     let transcriber_cleanup = Arc::clone(&tauri_state.transcriber);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(tauri_state)
         .invoke_handler(tauri::generate_handler![
             get_state,
@@ -396,13 +403,66 @@ pub fn run() {
             get_hotkeys,
             toggle_recording,
         ])
-        .on_window_event(move |_window, event| {
-            // Drop Metal-backed models BEFORE process exit to avoid
-            // ggml_metal_rsets_free abort during __cxa_finalize_ranges
-            if let tauri::WindowEvent::Destroyed = event {
-                if let Ok(mut t) = transcriber_cleanup.lock() {
-                    *t = None; // drop Transcriber → drops WhisperContext → clean Metal free
+        .setup(|app| {
+            // ─── System Tray ─────────────────────────────────
+            let show = MenuItemBuilder::with_id("show", "Show Typeoff").build(app)?;
+            let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+            let menu = MenuBuilder::new(app)
+                .item(&show)
+                .separator()
+                .item(&quit)
+                .build()?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .tooltip("Typeoff — Double Shift to record")
+                .on_menu_event(|app, event| {
+                    match event.id().as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    // Double-click tray icon → show/hide window
+                    if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            if window.is_visible().unwrap_or(false) {
+                                let _ = window.hide();
+                            } else {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                })
+                .build(app)?;
+
+            Ok(())
+        })
+        .on_window_event(move |window, event| {
+            match event {
+                // Close button → hide to tray instead of quitting
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    let _ = window.hide();
+                    api.prevent_close();
                 }
+                // Actual destroy (from quit menu) → clean up Metal models
+                tauri::WindowEvent::Destroyed => {
+                    if let Ok(mut t) = transcriber_cleanup.lock() {
+                        *t = None;
+                    }
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())

@@ -7,65 +7,86 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-mac:
-    runs-on: macos-latest  # Apple Silicon runner
+  build-mac-apple-silicon:
+    runs-on: macos-latest  # Apple Silicon
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli
-
-      - name: Build Mac .dmg
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install tauri-cli
+      - name: Build
         working-directory: rs
         run: cargo tauri build
-
-      - name: Upload Mac artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: typeoff-mac
+          name: Typeoff-Mac-AppleSilicon
           path: rs/target/release/bundle/dmg/*.dmg
 
-  build-windows:
+  build-mac-intel:
+    runs-on: macos-13  # Intel Mac runner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install tauri-cli
+      - name: Build
+        working-directory: rs
+        run: cargo tauri build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Typeoff-Mac-Intel
+          path: rs/target/release/bundle/dmg/*.dmg
+
+  build-windows-cpu:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli
-
-      - name: Build Windows installer
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install tauri-cli
+      - name: Build (CPU only)
         working-directory: rs
         run: cargo tauri build
-
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: typeoff-windows
+          name: Typeoff-Win-CPU
+          path: |
+            rs/target/release/bundle/nsis/*.exe
+            rs/target/release/bundle/msi/*.msi
+
+  build-windows-gpu:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.16
+        with:
+          cuda: '12.6.0'
+      - run: cargo install tauri-cli
+      - name: Build (CUDA GPU)
+        working-directory: rs
+        run: cargo tauri build --features cuda
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Typeoff-Win-GPU
           path: |
             rs/target/release/bundle/nsis/*.exe
             rs/target/release/bundle/msi/*.msi
 
   release:
-    needs: [build-mac, build-windows]
+    needs: [build-mac-apple-silicon, build-mac-intel, build-windows-cpu, build-windows-gpu]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-
+      - uses: actions/download-artifact@v4
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            typeoff-mac/*.dmg
-            typeoff-windows/*.exe
-            typeoff-windows/*.msi
+            Typeoff-Mac-AppleSilicon/*.dmg
+            Typeoff-Mac-Intel/*.dmg
+            Typeoff-Win-CPU/*.exe
+            Typeoff-Win-CPU/*.msi
+            Typeoff-Win-GPU/*.exe
+            Typeoff-Win-GPU/*.msi
           generate_release_notes: true

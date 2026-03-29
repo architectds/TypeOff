@@ -692,6 +692,20 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            // ─── Request permissions on startup ─────────
+            // Trigger macOS Accessibility permission prompt immediately
+            // so user approves before first recording, not during paste
+            #[cfg(target_os = "macos")]
+            {
+                thread::spawn(|| {
+                    // This triggers the macOS permission dialog for System Events
+                    let _ = std::process::Command::new("osascript")
+                        .arg("-e")
+                        .arg("tell application \"System Events\" to keystroke \"\" using command down")
+                        .output();
+                });
+            }
+
             Ok(())
         })
         .on_window_event(move |window, event| {

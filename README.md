@@ -32,19 +32,42 @@ Mic → Bandpass Filter → VAD → Whisper → Streaming Agreement → Filler R
 
 Everything runs locally. ~1GB memory (Whisper 500MB + Qwen 500MB). Metal GPU on Apple Silicon, CUDA on Windows/Linux.
 
-## Rust Version (rs/)
+## Build & Run
 
-The primary version. Cross-platform (Mac, Windows, Linux).
+### Prerequisites (one-time)
+
+**Mac:**
+```bash
+brew install cmake
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cargo install tauri-cli
+```
+
+**Windows:**
+```powershell
+winget install Microsoft.VisualStudio.2022.BuildTools --override "--add Microsoft.VisualStudio.Workload.VCTools"
+winget install Rustlang.Rustup
+winget install Kitware.CMake
+cargo install tauri-cli
+```
+
+### Run (dev mode)
 
 ```bash
 cd rs
-cargo run                              # Full hotkey mode
-cargo run -- --test-record 3           # Test mic capture
-cargo run -- --test-record-transcribe 5  # Record and transcribe
-cargo run -- --help                    # All test commands
+cargo tauri dev          # ← This is the ONLY command you need
 ```
 
-Requires a Whisper GGML model in `~/Library/Application Support/Typeoff/models/` (Mac) or `%APPDATA%/Typeoff/models/` (Windows). Download from [whisper.cpp models](https://huggingface.co/ggerganov/whisper.cpp/tree/main).
+**IMPORTANT:** Do NOT run `cargo run` or `cargo build` directly — that builds the CLI binary separately and wastes time. Always use `cargo tauri dev` which builds only the Tauri app.
+
+### Build installer (for distribution)
+
+```bash
+cd rs
+cargo tauri build        # Produces .dmg (Mac) or .exe/.msi (Windows)
+```
+
+The app downloads the Whisper model on first launch — no manual model setup needed.
 
 ### Rust Dependencies
 

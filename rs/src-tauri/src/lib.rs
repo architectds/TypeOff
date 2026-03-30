@@ -10,6 +10,7 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 use typeoff::audio_filter;
 use typeoff::config::Config;
+use typeoff::correction_batch::CorrectionBatch;
 use typeoff::corrector::Corrector;
 use typeoff::fillers;
 use typeoff::paster;
@@ -65,6 +66,7 @@ const TRAY_ID: &str = "typeoff-tray";
 const WAVE_BANDS: usize = 16;
 const MINI_WIDTH: f64 = 520.0;
 const MINI_HEIGHT: f64 = 64.0;
+const CORRECTION_IDLE_FLUSH: Duration = Duration::from_millis(900);
 
 fn sync_text_state(state: &Arc<Mutex<AppState>>, streamer: &StreamingTranscriber) {
     let confirmed_text = streamer.confirmed_text();
@@ -75,6 +77,26 @@ fn sync_text_state(state: &Arc<Mutex<AppState>>, streamer: &StreamingTranscriber
     app_state.confirmed_text = confirmed_text;
     app_state.pending_text = pending_text;
     app_state.text = display_text;
+}
+
+fn flush_correction_batch(
+    batch: &mut CorrectionBatch,
+    corrector: &mut Corrector,
+    auto_paste: bool,
+) {
+    let Some(mut text) = batch.take_text() else {
+        return;
+    };
+
+    if corrector.is_enabled() {
+        text = corrector.correct(&text);
+    }
+
+    if auto_paste && !text.is_empty() {
+        let _ = panic::catch_unwind(|| {
+            paster::paste_text(&text);
+        });
+    }
 }
 
 fn rms(samples: &[f32]) -> f32 {
@@ -611,6 +633,7 @@ fn run_session(
     let vad = Vad::new(config.silence_duration, config.sample_rate);
     let mut streamer = StreamingTranscriber::new();
     let mut corrector = Corrector::new(&config.correction_mode, config.get_correction_model_path());
+    let mut correction_batch = CorrectionBatch::default();
 
     {
         let mut s = state.lock().unwrap();
@@ -695,11 +718,16 @@ fn run_session(
                 last_transcribe = Instant::now();
 
                 if let Some(sentence) = new_sentence {
-                    let mut cleaned = fillers::remove_fillers(&sentence);
+                    let cleaned = fillers::remove_fillers(&sentence);
                     if corrector.is_enabled() {
-                        cleaned = corrector.correct(&cleaned);
-                    }
-                    if config.auto_paste && !cleaned.is_empty() {
+                        if correction_batch.push(&cleaned) && correction_batch.should_flush() {
+                            flush_correction_batch(
+                                &mut correction_batch,
+                                &mut corrector,
+                                config.auto_paste,
+                            );
+                        }
+                    } else if config.auto_paste && !cleaned.is_empty() {
                         let _ = panic::catch_unwind(|| {
                             paster::paste_text(&cleaned);
                         });
@@ -712,6 +740,14 @@ fn run_session(
                 if discard_samples > 0 {
                     recorder.discard_front(discard_samples);
                 }
+            }
+        }
+
+        if corrector.is_enabled() && correction_batch.should_flush_after_idle(CORRECTION_IDLE_FLUSH)
+        {
+            let recent_speech = recorder.with_audio(|audio| vad.has_recent_speech(audio, 0.8));
+            if !recent_speech {
+                flush_correction_batch(&mut correction_batch, &mut corrector, config.auto_paste);
             }
         }
     }
@@ -755,18 +791,21 @@ fn run_session(
         );
         drop(transcriber_guard);
 
-        if config.auto_paste {
-            if let Some(ref text) = remainder {
-                let mut cleaned = fillers::remove_fillers(text);
-                if corrector.is_enabled() {
-                    cleaned = corrector.correct(&cleaned);
-                }
-                if !cleaned.is_empty() {
-                    let _ = panic::catch_unwind(|| {
-                        paster::paste_text(&cleaned);
-                    });
-                }
+        if let Some(ref text) = remainder {
+            let cleaned = fillers::remove_fillers(text);
+            if corrector.is_enabled() {
+                correction_batch.push(&cleaned);
+            } else if config.auto_paste && !cleaned.is_empty() {
+                let _ = panic::catch_unwind(|| {
+                    paster::paste_text(&cleaned);
+                });
             }
+        }
+
+        if corrector.is_enabled() {
+            flush_correction_batch(&mut correction_batch, &mut corrector, config.auto_paste);
+        } else if !config.auto_paste {
+            // No-op: keep behavior unchanged when auto-paste is disabled.
         }
 
         {

@@ -17,7 +17,7 @@ typeoff = { path = "..", features = ["metal", "local-correction"] }
 core-foundation = "0.9"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-typeoff = { path = "..", features = ["cuda"] }
+typeoff = { path = "..", features = ["cuda", "local-correction"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 typeoff = { path = "..", features = ["cuda"] }

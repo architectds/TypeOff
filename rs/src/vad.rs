@@ -70,4 +70,15 @@ impl Vad {
         }
         false
     }
+
+    /// Check whether the recent audio tail still contains speech.
+    pub fn has_recent_speech(&self, audio: &[f32], seconds: f32) -> bool {
+        if audio.is_empty() {
+            return false;
+        }
+
+        let tail_samples = ((seconds.max(0.0)) * self.sample_rate as f32) as usize;
+        let start = audio.len().saturating_sub(tail_samples.max(1));
+        !self.is_silence(&audio[start..])
+    }
 }

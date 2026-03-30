@@ -1,5 +1,6 @@
 pub mod audio_filter;
 pub mod config;
+pub mod correction_batch;
 pub mod corrector;
 pub mod fillers;
 pub mod hotkey;

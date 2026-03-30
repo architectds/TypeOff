@@ -19,7 +19,7 @@ path = "src/main.rs"
 default = []
 metal = ["whisper-rs/metal"]
 cuda = ["whisper-rs/cuda"]
-local-correction = ["dep:llama-cpp-2"]
+local-correction = ["dep:llama-cpp-2", "llama-cpp-2/dynamic-link"]
 
 [dependencies]
 # Whisper inference (whisper.cpp bindings)

@@ -49,12 +49,12 @@ regex = "1"
 # LLM correction (Qwen via llama.cpp)
 llama-cpp-2 = "0.1"
 
+# Misc
+dirs = "6"
+
 # macOS CGEvent for paste (bypasses osascript permission issues)
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.23"
-
-# Misc
-dirs = "6"
 
 [profile.release]
 opt-level = 3

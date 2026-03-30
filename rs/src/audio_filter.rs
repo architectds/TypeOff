@@ -3,10 +3,9 @@
 /// Port of python/engine/audio_filter.py.
 /// Uses cascaded biquad filters (highpass + lowpass) to approximate
 /// a Butterworth bandpass filter.
-
 use biquad::*;
 
-const LOW_CUT: f32 = 50.0;    // Hz — generous low end, catches all voice fundamentals
+const LOW_CUT: f32 = 50.0; // Hz — generous low end, catches all voice fundamentals
 const HIGH_CUT: f32 = 3400.0; // Hz — upper harmonics for clarity, sibilance up to ~4kHz
 
 /// Apply bandpass filter to keep only human voice frequencies.
@@ -22,22 +21,14 @@ pub fn voice_filter(audio: &[f32], sample_rate: u32) -> Vec<f32> {
     let fs_hz = fs.hz();
 
     // Highpass at 50Hz (removes HVAC rumble, traffic, electrical hum)
-    let hp_coeffs = Coefficients::<f32>::from_params(
-        Type::HighPass,
-        fs_hz,
-        LOW_CUT.hz(),
-        Q_BUTTERWORTH_F32,
-    )
-    .expect("Failed to create highpass filter");
+    let hp_coeffs =
+        Coefficients::<f32>::from_params(Type::HighPass, fs_hz, LOW_CUT.hz(), Q_BUTTERWORTH_F32)
+            .expect("Failed to create highpass filter");
 
     // Lowpass at 3400Hz (removes keyboard clicks, mouse clicks, hiss)
-    let lp_coeffs = Coefficients::<f32>::from_params(
-        Type::LowPass,
-        fs_hz,
-        HIGH_CUT.hz(),
-        Q_BUTTERWORTH_F32,
-    )
-    .expect("Failed to create lowpass filter");
+    let lp_coeffs =
+        Coefficients::<f32>::from_params(Type::LowPass, fs_hz, HIGH_CUT.hz(), Q_BUTTERWORTH_F32)
+            .expect("Failed to create lowpass filter");
 
     // Two cascaded stages for each (4th order total, close to Python's order-5)
     let mut hp1 = DirectForm2Transposed::<f32>::new(hp_coeffs);

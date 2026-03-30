@@ -19,6 +19,7 @@ path = "src/main.rs"
 default = []
 metal = ["whisper-rs/metal"]
 cuda = ["whisper-rs/cuda"]
+local-correction = ["dep:llama-cpp-2"]
 
 [dependencies]
 # Whisper inference (whisper.cpp bindings)
@@ -47,7 +48,7 @@ serde_json = "1"
 regex = "1"
 
 # LLM correction (Qwen via llama.cpp)
-llama-cpp-2 = "0.1"
+llama-cpp-2 = { version = "0.1", optional = true }
 
 # Misc
 dirs = "6"

@@ -1,7 +1,6 @@
 /// Post-processing: remove filler words and collapse stutters.
 ///
 /// Port of python/engine/fillers.py.
-
 use regex::Regex;
 use std::sync::LazyLock;
 
@@ -205,12 +204,18 @@ mod tests {
 
     #[test]
     fn test_english_filler_start() {
-        assert_eq!(remove_fillers("Um, I think we should go."), "I think we should go.");
+        assert_eq!(
+            remove_fillers("Um, I think we should go."),
+            "I think we should go."
+        );
     }
 
     #[test]
     fn test_english_filler_end() {
-        assert_eq!(remove_fillers("I think we should go, uh"), "I think we should go");
+        assert_eq!(
+            remove_fillers("I think we should go, uh"),
+            "I think we should go"
+        );
     }
 
     #[test]
@@ -225,7 +230,10 @@ mod tests {
 
     #[test]
     fn test_no_fillers() {
-        assert_eq!(remove_fillers("This is a normal sentence."), "This is a normal sentence.");
+        assert_eq!(
+            remove_fillers("This is a normal sentence."),
+            "This is a normal sentence."
+        );
     }
 
     #[test]

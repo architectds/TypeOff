@@ -1,25 +1,25 @@
-mod recorder;
-mod transcriber;
-mod streamer;
-mod vad;
+mod audio_filter;
+mod config;
+mod corrector;
+mod fillers;
 mod hotkey;
 mod paster;
-mod config;
-mod audio_filter;
-mod fillers;
-mod corrector;
+mod recorder;
+mod streamer;
+mod transcriber;
+mod vad;
 
+use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use std::io::Write;
 
 use config::Config;
-use recorder::Recorder;
-use transcriber::Transcriber;
-use streamer::StreamingTranscriber;
-use vad::Vad;
 use paster::paste_text;
+use recorder::Recorder;
+use streamer::StreamingTranscriber;
+use transcriber::Transcriber;
+use vad::Vad;
 
 /// App state shared across threads
 #[derive(Clone, Debug)]
@@ -54,7 +54,9 @@ fn main() {
                 if path.is_empty() {
                     eprintln!("Usage: typeoff --test-transcribe <audio.raw>");
                     eprintln!("  Audio must be f32le, 16kHz, mono.");
-                    eprintln!("  Create with: ffmpeg -i input.mp3 -ar 16000 -ac 1 -f f32le output.raw");
+                    eprintln!(
+                        "  Create with: ffmpeg -i input.mp3 -ar 16000 -ac 1 -f f32le output.raw"
+                    );
                     return;
                 }
                 test_transcribe(path);
@@ -88,9 +90,13 @@ fn main() {
                 println!("Usage:");
                 println!("  typeoff                              Run normally (hotkey mode)");
                 println!("  typeoff --test-record <secs>         Record and show audio stats");
-                println!("  typeoff --test-transcribe <file.raw> Transcribe a raw f32le 16kHz file");
+                println!(
+                    "  typeoff --test-transcribe <file.raw> Transcribe a raw f32le 16kHz file"
+                );
                 println!("  typeoff --test-record-transcribe <s> Record then transcribe");
-                println!("  typeoff --test-filter                Test bandpass filter on TTS audio");
+                println!(
+                    "  typeoff --test-filter                Test bandpass filter on TTS audio"
+                );
                 println!("  typeoff --test-fillers               Test filler removal");
                 println!("  typeoff --test-streamer              Test streaming agreement logic");
                 return;
@@ -123,7 +129,12 @@ fn test_record(seconds: f32) {
         if audio.len() > 1600 {
             let tail = &audio[audio.len() - 1600..];
             let rms = (tail.iter().map(|s| s * s).sum::<f32>() / tail.len() as f32).sqrt();
-            print!("\r[test-record] {:.1}s | {} samples | rms={:.6}", duration, audio.len(), rms);
+            print!(
+                "\r[test-record] {:.1}s | {} samples | rms={:.6}",
+                duration,
+                audio.len(),
+                rms
+            );
             std::io::stdout().flush().ok();
         }
     }
@@ -152,12 +163,18 @@ fn test_record(seconds: f32) {
     let bytes: Vec<u8> = audio.iter().flat_map(|f| f.to_le_bytes()).collect();
     std::fs::write(out_path, &bytes).ok();
     println!("[test-record] Saved to: {}", out_path);
-    println!("[test-record] Play with: ffplay -f f32le -ar 16000 -ac 1 {}", out_path);
+    println!(
+        "[test-record] Play with: ffplay -f f32le -ar 16000 -ac 1 {}",
+        out_path
+    );
 
     if rms < 0.001 {
         eprintln!("[test-record] WARNING: RMS very low ({:.6}). Mic may not be working or permission not granted.", rms);
     } else if rms > 0.5 {
-        eprintln!("[test-record] WARNING: RMS very high ({:.6}). Audio may be clipping.", rms);
+        eprintln!(
+            "[test-record] WARNING: RMS very high ({:.6}). Audio may be clipping.",
+            rms
+        );
     } else {
         println!("[test-record] Audio levels look good.");
     }
@@ -173,7 +190,10 @@ fn test_transcribe(path: &str) {
     println!("[test-transcribe] Model path: {}", model_path);
 
     if !std::path::Path::new(&model_path).exists() {
-        eprintln!("[test-transcribe] ERROR: Model file not found at: {}", model_path);
+        eprintln!(
+            "[test-transcribe] ERROR: Model file not found at: {}",
+            model_path
+        );
         return;
     }
 
@@ -194,7 +214,11 @@ fn test_transcribe(path: &str) {
         .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
         .collect();
 
-    println!("[test-transcribe] Audio: {} samples ({:.1}s)", audio.len(), audio.len() as f32 / 16000.0);
+    println!(
+        "[test-transcribe] Audio: {} samples ({:.1}s)",
+        audio.len(),
+        audio.len() as f32 / 16000.0
+    );
 
     let rms = if !audio.is_empty() {
         (audio.iter().map(|s| s * s).sum::<f32>() / audio.len() as f32).sqrt()
@@ -219,14 +243,20 @@ fn test_record_transcribe(seconds: f32) {
     println!("[test-record-transcribe] Loading model: {}", config.model);
     let model_path = config.get_model_path();
     if !std::path::Path::new(&model_path).exists() {
-        eprintln!("[test-record-transcribe] ERROR: Model file not found at: {}", model_path);
+        eprintln!(
+            "[test-record-transcribe] ERROR: Model file not found at: {}",
+            model_path
+        );
         return;
     }
 
     let transcriber = Transcriber::new(&config);
     println!("[test-record-transcribe] Model loaded.");
 
-    println!("[test-record-transcribe] Recording {:.1}s... SPEAK NOW!", seconds);
+    println!(
+        "[test-record-transcribe] Recording {:.1}s... SPEAK NOW!",
+        seconds
+    );
     let mut recorder = Recorder::new(16000);
     recorder.start();
 
@@ -234,7 +264,10 @@ fn test_record_transcribe(seconds: f32) {
     while start.elapsed().as_secs_f32() < seconds {
         thread::sleep(Duration::from_millis(200));
         let remaining = seconds - start.elapsed().as_secs_f32();
-        print!("\r[test-record-transcribe] {:.1}s remaining...  ", remaining.max(0.0));
+        print!(
+            "\r[test-record-transcribe] {:.1}s remaining...  ",
+            remaining.max(0.0)
+        );
         std::io::stdout().flush().ok();
     }
     println!();
@@ -261,14 +294,20 @@ fn test_record_transcribe(seconds: f32) {
     let text = transcriber.transcribe(&audio, config.language.as_deref());
     let elapsed = t0.elapsed();
 
-    println!("[test-record-transcribe] Time: {:.2}s", elapsed.as_secs_f32());
+    println!(
+        "[test-record-transcribe] Time: {:.2}s",
+        elapsed.as_secs_f32()
+    );
     println!("[test-record-transcribe] Result: \"{}\"", text);
 
     // Save audio for replay
     let out_path = "/tmp/typeoff_test.raw";
     let bytes: Vec<u8> = audio.iter().flat_map(|f| f.to_le_bytes()).collect();
     std::fs::write(out_path, &bytes).ok();
-    println!("[test-record-transcribe] Audio saved: ffplay -f f32le -ar 16000 -ac 1 {}", out_path);
+    println!(
+        "[test-record-transcribe] Audio saved: ffplay -f f32le -ar 16000 -ac 1 {}",
+        out_path
+    );
 }
 
 // ─── Test: Bandpass Filter ────────────────────────────────────────
@@ -279,29 +318,50 @@ fn test_filter() {
     let bytes = match std::fs::read(path) {
         Ok(b) => b,
         Err(_) => {
-            eprintln!("[test-filter] No test audio at {}. Run --test-record first or generate TTS.", path);
+            eprintln!(
+                "[test-filter] No test audio at {}. Run --test-record first or generate TTS.",
+                path
+            );
             return;
         }
     };
-    let audio: Vec<f32> = bytes.chunks_exact(4)
+    let audio: Vec<f32> = bytes
+        .chunks_exact(4)
         .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
         .collect();
 
     let raw_rms = (audio.iter().map(|s| s * s).sum::<f32>() / audio.len() as f32).sqrt();
-    println!("[test-filter] Raw audio: {} samples, RMS={:.6}", audio.len(), raw_rms);
+    println!(
+        "[test-filter] Raw audio: {} samples, RMS={:.6}",
+        audio.len(),
+        raw_rms
+    );
 
     let filtered = audio_filter::voice_filter(&audio, 16000);
     let filt_rms = (filtered.iter().map(|s| s * s).sum::<f32>() / filtered.len() as f32).sqrt();
-    println!("[test-filter] Filtered:  {} samples, RMS={:.6}", filtered.len(), filt_rms);
-    println!("[test-filter] RMS ratio: {:.2}% preserved", filt_rms / raw_rms * 100.0);
+    println!(
+        "[test-filter] Filtered:  {} samples, RMS={:.6}",
+        filtered.len(),
+        filt_rms
+    );
+    println!(
+        "[test-filter] RMS ratio: {:.2}% preserved",
+        filt_rms / raw_rms * 100.0
+    );
 
     // Save filtered audio
     let out_path = "/tmp/typeoff_filtered.raw";
     let out_bytes: Vec<u8> = filtered.iter().flat_map(|f| f.to_le_bytes()).collect();
     std::fs::write(out_path, &out_bytes).ok();
     println!("[test-filter] Saved to: {}", out_path);
-    println!("[test-filter] Play raw:      ffplay -f f32le -ar 16000 -ac 1 {}", path);
-    println!("[test-filter] Play filtered: ffplay -f f32le -ar 16000 -ac 1 {}", out_path);
+    println!(
+        "[test-filter] Play raw:      ffplay -f f32le -ar 16000 -ac 1 {}",
+        path
+    );
+    println!(
+        "[test-filter] Play filtered: ffplay -f f32le -ar 16000 -ac 1 {}",
+        out_path
+    );
 
     // Also transcribe both to compare
     let config = Config::load();
@@ -311,11 +371,19 @@ fn test_filter() {
 
         let t0 = Instant::now();
         let raw_text = transcriber.transcribe(&audio, Some("en"));
-        println!("[test-filter] Raw transcription ({:.2}s): \"{}\"", t0.elapsed().as_secs_f32(), raw_text);
+        println!(
+            "[test-filter] Raw transcription ({:.2}s): \"{}\"",
+            t0.elapsed().as_secs_f32(),
+            raw_text
+        );
 
         let t0 = Instant::now();
         let filt_text = transcriber.transcribe(&filtered, Some("en"));
-        println!("[test-filter] Filtered transcription ({:.2}s): \"{}\"", t0.elapsed().as_secs_f32(), filt_text);
+        println!(
+            "[test-filter] Filtered transcription ({:.2}s): \"{}\"",
+            t0.elapsed().as_secs_f32(),
+            filt_text
+        );
     }
 
     if filt_rms < raw_rms * 0.1 {
@@ -402,31 +470,50 @@ fn test_streamer() {
     {
         // Simulate by directly testing tokenize + agreement
         let tokens_a: Vec<String> = vec!["Hello", ",", "how", "are", "you"]
-            .into_iter().map(String::from).collect();
+            .into_iter()
+            .map(String::from)
+            .collect();
         let tokens_b: Vec<String> = vec!["Hello", ",", "how", "are", "you", "doing"]
-            .into_iter().map(String::from).collect();
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let prefix_len = {
             let len = tokens_a.len().min(tokens_b.len());
             let mut i = 0;
-            while i < len && tokens_a[i] == tokens_b[i] { i += 1; }
+            while i < len && tokens_a[i] == tokens_b[i] {
+                i += 1;
+            }
             i
         };
         println!("  Pass 1: {:?}", join_tokens(&tokens_a));
         println!("  Pass 2: {:?}", join_tokens(&tokens_b));
         println!("  Strict prefix: {} tokens (need >= 3)", prefix_len);
-        println!("  Result: {}", if prefix_len >= 3 { "AGREE ✓" } else { "NO AGREE" });
+        println!(
+            "  Result: {}",
+            if prefix_len >= 3 {
+                "AGREE ✓"
+            } else {
+                "NO AGREE"
+            }
+        );
     }
     println!();
 
     // Test 2: Fuzzy agreement (80%+ match with differences)
     println!("--- Test 2: Fuzzy agreement (80% threshold) ---");
     {
-        let tokens_a: Vec<String> = vec!["今", "天", "天", "气", "很", "好", "我", "们", "去", "公"]
-            .into_iter().map(String::from).collect();
+        let tokens_a: Vec<String> =
+            vec!["今", "天", "天", "气", "很", "好", "我", "们", "去", "公"]
+                .into_iter()
+                .map(String::from)
+                .collect();
         // Simulate homophone swap: 气→汽 (1 diff in 10 = 90% match)
-        let tokens_b: Vec<String> = vec!["今", "天", "天", "汽", "很", "好", "我", "们", "去", "公"]
-            .into_iter().map(String::from).collect();
+        let tokens_b: Vec<String> =
+            vec!["今", "天", "天", "汽", "很", "好", "我", "们", "去", "公"]
+                .into_iter()
+                .map(String::from)
+                .collect();
 
         let length = tokens_a.len().min(tokens_b.len());
         let matches = (0..length).filter(|&i| tokens_a[i] == tokens_b[i]).count();
@@ -434,8 +521,20 @@ fn test_streamer() {
 
         println!("  Pass 1: {}", join_tokens(&tokens_a));
         println!("  Pass 2: {}", join_tokens(&tokens_b));
-        println!("  Match ratio: {}/{} = {:.0}%", matches, length, ratio * 100.0);
-        println!("  Result: {}", if ratio >= 0.8 { "FUZZY AGREE ✓" } else { "NO AGREE" });
+        println!(
+            "  Match ratio: {}/{} = {:.0}%",
+            matches,
+            length,
+            ratio * 100.0
+        );
+        println!(
+            "  Result: {}",
+            if ratio >= 0.8 {
+                "FUZZY AGREE ✓"
+            } else {
+                "NO AGREE"
+            }
+        );
     }
     println!();
 
@@ -497,11 +596,7 @@ fn run_normal() {
     }
 }
 
-fn run_session(
-    config: &Config,
-    transcriber: &Transcriber,
-    state: &Arc<Mutex<AppState>>,
-) {
+fn run_session(config: &Config, transcriber: &Transcriber, state: &Arc<Mutex<AppState>>) {
     let mut recorder = Recorder::new(config.sample_rate);
     let vad = Vad::new(config.silence_duration, config.sample_rate);
     let mut streamer = StreamingTranscriber::new();

@@ -8,14 +8,25 @@
 ///   3. When a complete sentence is confirmed → LOCK it, paste it, slide window
 ///   4. Re-transcribe only the audio after the locked sentence (~5-10s)
 ///   5. Final pass: re-transcribe last incomplete sentence for accuracy
-
 use crate::transcriber::Transcriber;
 
 /// Common Whisper hallucinations
 const HALLUCINATIONS: &[&str] = &[
-    "", "you", "thank you.", "thanks for watching!", "thanks for watching.",
-    "subscribe", "bye.", "bye", "thank you", "you.", "the end.",
-    "thanks for listening.", "see you next time.", "thank you for watching.", "...",
+    "",
+    "you",
+    "thank you.",
+    "thanks for watching!",
+    "thanks for watching.",
+    "subscribe",
+    "bye.",
+    "bye",
+    "thank you",
+    "you.",
+    "the end.",
+    "thanks for listening.",
+    "see you next time.",
+    "thank you for watching.",
+    "...",
 ];
 
 /// Check if char is CJK
@@ -132,7 +143,7 @@ pub struct StreamingTranscriber {
     confirmed_words: Vec<String>,
     locked_text: String,
     pending_text: String,
-    window_start_sample: usize,
+    pending_discard_samples: usize,
     window_pass_count: usize,
     max_passes: usize,
 }
@@ -144,7 +155,7 @@ impl StreamingTranscriber {
             confirmed_words: Vec::new(),
             locked_text: String::new(),
             pending_text: String::new(),
-            window_start_sample: 0,
+            pending_discard_samples: 0,
             window_pass_count: 0,
             max_passes: 3,
         }
@@ -253,8 +264,12 @@ impl StreamingTranscriber {
         // Slide window
         if !current_words.is_empty() {
             let locked_count = tokenize(lock_text).len();
-            let ratio = locked_count as f32 / current_words.len() as f32;
-            self.window_start_sample += (ratio * window_len as f32) as usize;
+            let consumed = if remainder.is_empty() {
+                window_len
+            } else {
+                ((locked_count as f32 / current_words.len() as f32) * window_len as f32) as usize
+            };
+            self.pending_discard_samples = consumed.min(window_len);
         }
 
         // Reset agreement state
@@ -329,8 +344,10 @@ impl StreamingTranscriber {
         }
     }
 
-    pub fn window_start_sample(&self) -> usize {
-        self.window_start_sample
+    pub fn take_pending_discard_samples(&mut self) -> usize {
+        let discard = self.pending_discard_samples;
+        self.pending_discard_samples = 0;
+        discard
     }
 
     pub fn reset(&mut self) {
@@ -338,7 +355,7 @@ impl StreamingTranscriber {
         self.confirmed_words.clear();
         self.locked_text.clear();
         self.pending_text.clear();
-        self.window_start_sample = 0;
+        self.pending_discard_samples = 0;
         self.window_pass_count = 0;
     }
 }
@@ -362,13 +379,18 @@ mod tests {
     #[test]
     fn test_join_tokens_cjk() {
         let tokens: Vec<String> = vec!["今", "天", "weather", "很", "好"]
-            .into_iter().map(String::from).collect();
+            .into_iter()
+            .map(String::from)
+            .collect();
         assert_eq!(join_tokens(&tokens), "今天 weather 很好");
     }
 
     #[test]
     fn test_fuzzy_agree_exact() {
-        let a: Vec<String> = vec!["hello", "world", "test"].into_iter().map(String::from).collect();
+        let a: Vec<String> = vec!["hello", "world", "test"]
+            .into_iter()
+            .map(String::from)
+            .collect();
         let b = a.clone();
         let (agreed, ratio) = fuzzy_agree(&a, &b, 0.8);
         assert_eq!(agreed.len(), 3);
@@ -378,9 +400,13 @@ mod tests {
     #[test]
     fn test_fuzzy_agree_one_diff() {
         let a: Vec<String> = vec!["hello", "world", "test", "here", "now"]
-            .into_iter().map(String::from).collect();
+            .into_iter()
+            .map(String::from)
+            .collect();
         let b: Vec<String> = vec!["hello", "word", "test", "here", "now"]
-            .into_iter().map(String::from).collect();
+            .into_iter()
+            .map(String::from)
+            .collect();
         let (agreed, ratio) = fuzzy_agree(&a, &b, 0.8);
         assert_eq!(agreed.len(), 5); // 4/5 = 80% >= threshold
         assert_eq!(ratio, 0.8);

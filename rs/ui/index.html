@@ -6,103 +6,106 @@
 <title>Typeoff</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   html, body {
     height: 100%;
     font-family: 'Segoe UI', -apple-system, sans-serif;
     background: #1a1b2e;
+    color: #cdd6f4;
+    overflow: hidden;
     -webkit-user-select: none;
     user-select: none;
-    overflow: hidden;
   }
-
   .window {
-    background: #1a1b2e;
     height: 100%;
     display: flex;
     flex-direction: column;
+    background: #1a1b2e;
   }
-
-  /* ─── Header ─── */
   .header {
     display: flex;
     align-items: center;
-    padding: 16px 20px 0;
     gap: 10px;
+    padding: 16px 20px 0;
   }
-
   .logo {
-    width: 30px; height: 30px;
+    width: 30px;
+    height: 30px;
     border-radius: 9px;
+    display: grid;
+    place-items: center;
+    font-size: 15px;
     background: linear-gradient(135deg, #89b4fa, #74c7ec);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 15px; flex-shrink: 0;
+    flex-shrink: 0;
   }
-
-  .title-group { flex: 1; }
-  .title { font-size: 14px; font-weight: 700; color: #cdd6f4; letter-spacing: -0.3px; }
-  .subtitle { font-size: 10px; color: #6c7086; margin-top: 1px; }
-
+  .title-group { flex: 1; min-width: 0; }
+  .title { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+  .subtitle { margin-top: 1px; font-size: 10px; color: #6c7086; }
+  .header-drag-fill {
+    flex: 1 1 auto;
+    min-width: 24px;
+    height: 28px;
+  }
+  .timer {
+    margin-right: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6c7086;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.2s;
+  }
+  .timer.active { color: #f38ba8; }
   .header-actions {
-    display: flex; gap: 6px; -webkit-app-region: no-drag;
+    display: flex;
+    gap: 6px;
+    -webkit-app-region: no-drag;
   }
-
   .icon-btn {
-    width: 28px; height: 28px; border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     border: 1px solid rgba(255,255,255,0.06);
     background: rgba(255,255,255,0.04);
-    color: #6c7086; font-size: 14px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #6c7086;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.2s;
   }
   .icon-btn:hover { background: rgba(255,255,255,0.08); color: #a6adc8; }
   .icon-btn.active { background: rgba(137,180,250,0.15); color: #89b4fa; border-color: rgba(137,180,250,0.3); }
   .icon-btn.close:hover { background: rgba(243,139,168,0.2); color: #f38ba8; }
   .icon-btn.minimize:hover { background: rgba(250,179,135,0.2); color: #fab387; }
-
-  .timer {
-    font-size: 13px; font-weight: 600; color: #6c7086;
-    font-variant-numeric: tabular-nums; transition: color 0.3s;
-    margin-right: 4px;
-  }
-  .timer.active { color: #f38ba8; }
-
-  .waveform {
-    display: flex; align-items: center; gap: 3px; height: 20px;
-    margin-right: 4px; opacity: 0; transition: opacity 0.3s;
-  }
-  .waveform.active { opacity: 1; }
-  .waveform .bar {
-    width: 3px; border-radius: 2px; background: #f38ba8;
-    height: 4px; transition: height 0.15s ease;
-  }
-
-  /* ─── Status Pill ─── */
+  .page { display: none; }
+  .page.active { display: flex; flex: 1; min-height: 0; flex-direction: column; }
   .status-bar { padding: 12px 20px 0; }
   .status-pill {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 5px 13px; border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 13px;
+    border-radius: 20px;
     background: rgba(137, 180, 250, 0.1);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.3s;
   }
   .status-pill.recording { background: rgba(243, 139, 168, 0.15); }
   .status-pill.done { background: rgba(166, 227, 161, 0.15); }
   .status-pill.transcribing { background: rgba(250, 179, 135, 0.12); }
-
   .status-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: #89b4fa; transition: background 0.3s;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #89b4fa;
   }
   .status-pill.recording .status-dot { background: #f38ba8; animation: pulse 1.5s ease-in-out infinite; }
   .status-pill.done .status-dot { background: #a6e3a1; }
   .status-pill.transcribing .status-dot { background: #fab387; animation: pulse 1s ease-in-out infinite; }
+  .status-text { font-size: 11px; font-weight: 600; color: #a6adc8; }
   @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.5; transform: scale(0.8); }
   }
-  .status-text { font-size: 11px; font-weight: 600; color: #a6adc8; }
-
-  /* ─── Text Area ─── */
   .text-area {
     margin: 12px 20px;
     padding: 12px 14px;
@@ -111,89 +114,211 @@
     overflow-y: auto;
     background: rgba(49, 50, 68, 0.5);
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255,255,255,0.04);
+    -webkit-app-region: no-drag;
   }
   .text-content {
-    font-size: 13px; line-height: 1.6; color: #cdd6f4;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #cdd6f4;
     word-wrap: break-word;
-    -webkit-user-select: text; user-select: text; -webkit-app-region: no-drag;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  .text-content.empty { color: #585b70; font-style: italic; }
+  .buffer-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #89b4fa;
+    background: rgba(137,180,250,0.12);
+    border: 1px solid rgba(137,180,250,0.18);
+  }
+  .buffer-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
   }
   .text-confirmed { color: #cdd6f4; }
   .text-pending { color: #89b4fa; opacity: 0.92; }
-  .text-content.empty { color: #585b70; font-style: italic; }
+  .startup-flash {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 16px;
+    color: #cdd6f4;
+    font-style: normal;
+  }
+  .startup-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(137,180,250,0.12);
+    border: 1px solid rgba(137,180,250,0.18);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #89b4fa;
+  }
+  .startup-mark {
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+    background:
+      radial-gradient(circle at 30% 30%, rgba(255,255,255,0.24), transparent 45%),
+      linear-gradient(135deg, rgba(137,180,250,0.95), rgba(116,199,236,0.72));
+    box-shadow: 0 18px 40px rgba(17, 17, 34, 0.36);
+  }
+  .startup-title {
+    font-size: 28px;
+    line-height: 1.05;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: #eef2ff;
+  }
+  .startup-subtitle {
+    max-width: 310px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #8f93a9;
+  }
+  .startup-status,
+  .startup-buffer {
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+  .startup-status {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .startup-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6c7086;
+  }
+  .startup-value {
+    margin-top: 3px;
+    font-size: 12px;
+    color: #d9def5;
+  }
+  .startup-buffer {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    background: linear-gradient(180deg, rgba(137,180,250,0.08), rgba(137,180,250,0.02));
+    border: 1px solid rgba(137,180,250,0.12);
+  }
+  .startup-buffer-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 11px;
+  }
+  .startup-buffer-key {
+    color: #6c7086;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+  .startup-buffer-val { color: #cdd6f4; }
   .cursor-blink {
-    display: inline-block; width: 2px; height: 15px;
-    background: #89b4fa; margin-left: 2px; vertical-align: text-bottom;
+    display: inline-block;
+    width: 2px;
+    height: 15px;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    background: #89b4fa;
     animation: blink 1s step-end infinite;
   }
   @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-
-  /* ─── Footer ─── */
   .footer {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 0 20px 14px;
     flex-shrink: 0;
   }
   .hotkey-hint { font-size: 10px; color: #45475a; }
   .hotkey-hint kbd {
-    display: inline-block; padding: 2px 5px; border-radius: 4px;
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
-    font-family: inherit; font-size: 9px; color: #6c7086;
+    display: inline-block;
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-family: inherit;
+    font-size: 9px;
+    color: #6c7086;
   }
   .btn-row { display: flex; gap: 5px; -webkit-app-region: no-drag; }
   .btn {
-    padding: 5px 11px; border-radius: 8px;
+    padding: 5px 11px;
+    border-radius: 8px;
     border: 1px solid rgba(255,255,255,0.06);
     background: rgba(255,255,255,0.04);
-    color: #6c7086; font-size: 11px; font-weight: 500;
-    cursor: pointer; transition: all 0.2s; font-family: inherit;
+    color: #6c7086;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
   }
   .btn:hover { background: rgba(255,255,255,0.08); color: #a6adc8; }
   .btn.primary {
     background: linear-gradient(135deg, rgba(137,180,250,0.2), rgba(116,199,236,0.15));
-    border-color: rgba(137,180,250,0.3); color: #89b4fa;
-  }
-  .btn.primary:hover {
-    background: linear-gradient(135deg, rgba(137,180,250,0.3), rgba(116,199,236,0.25));
+    border-color: rgba(137,180,250,0.3);
+    color: #89b4fa;
   }
   .btn.recording {
     background: linear-gradient(135deg, rgba(243,139,168,0.2), rgba(235,111,146,0.15));
-    border-color: rgba(243,139,168,0.3); color: #f38ba8;
+    border-color: rgba(243,139,168,0.3);
+    color: #f38ba8;
   }
-
-  /* ─── Pages ─── */
-  .page { display: none; }
-  .page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-
-  /* ─── Settings Panel ─── */
   .settings {
     padding: 0 20px 14px;
     flex: 1;
     overflow-y: auto;
   }
-
-  .settings-section {
-    margin-bottom: 16px;
-  }
-
+  .settings-section { margin-bottom: 16px; }
   .settings-section-title {
-    font-size: 10px; font-weight: 700; color: #6c7086;
-    text-transform: uppercase; letter-spacing: 0.8px;
     margin-bottom: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #6c7086;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
   }
-
   .setting-row {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
     padding: 8px 12px;
     background: rgba(49, 50, 68, 0.4);
     border-radius: 10px;
-    margin-bottom: 4px;
     -webkit-app-region: no-drag;
   }
-
-  .setting-label {
-    font-size: 12px; color: #cdd6f4;
-  }
+  .setting-label { font-size: 12px; color: #cdd6f4; }
+  .setting-desc { margin-top: 2px; font-size: 10px; color: #6c7086; }
   .setting-value {
     font-size: 11px;
     color: #a6adc8;
@@ -202,81 +327,98 @@
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.08);
   }
-
-  .setting-desc {
-    font-size: 10px; color: #6c7086; margin-top: 2px;
-  }
-
   .setting-select {
-    padding: 5px 10px; border-radius: 8px;
+    min-width: 140px;
+    padding: 5px 10px;
+    border-radius: 8px;
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.1);
-    color: #cdd6f4; font-size: 11px; font-family: inherit;
-    cursor: pointer; min-width: 140px;
-    -webkit-app-region: no-drag;
+    color: #cdd6f4;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
   }
-  .setting-select:focus { outline: none; border-color: rgba(137,180,250,0.4); }
   .setting-select option { background: #1e1e2e; color: #cdd6f4; }
-
+  .setting-select:focus { outline: none; border-color: rgba(137,180,250,0.4); }
   .setting-toggle {
-    position: relative; width: 38px; height: 20px;
-    -webkit-app-region: no-drag;
+    position: relative;
+    width: 38px;
+    height: 20px;
   }
   .setting-toggle input { opacity: 0; width: 0; height: 0; }
   .setting-toggle .slider {
-    position: absolute; cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255,255,255,0.1); border-radius: 20px;
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
     transition: 0.3s;
   }
   .setting-toggle .slider::before {
-    content: ""; position: absolute;
-    height: 16px; width: 16px; left: 2px; bottom: 2px;
-    background: #6c7086; border-radius: 50%; transition: 0.3s;
+    content: "";
+    position: absolute;
+    left: 2px;
+    bottom: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #6c7086;
+    transition: 0.3s;
   }
   .setting-toggle input:checked + .slider { background: rgba(137,180,250,0.3); }
-  .setting-toggle input:checked + .slider::before { transform: translateX(18px); background: #89b4fa; }
-
-  /* ─── Saved toast ─── */
-  .toast {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px);
-    background: rgba(166, 227, 161, 0.15); border: 1px solid rgba(166,227,161,0.3);
-    color: #a6e3a1; padding: 8px 20px; border-radius: 12px;
-    font-size: 12px; font-weight: 600;
-    opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    pointer-events: none; z-index: 100;
+  .setting-toggle input:checked + .slider::before {
+    transform: translateX(18px);
+    background: #89b4fa;
   }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  /* ─── Scrollbar ─── */
-  .settings::-webkit-scrollbar, .text-area::-webkit-scrollbar { width: 4px; }
-  .settings::-webkit-scrollbar-track, .text-area::-webkit-scrollbar-track { background: transparent; }
-  .settings::-webkit-scrollbar-thumb, .text-area::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.1); border-radius: 2px;
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%) translateY(60px);
+    padding: 8px 20px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #a6e3a1;
+    background: rgba(166,227,161,0.15);
+    border: 1px solid rgba(166,227,161,0.3);
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .settings::-webkit-scrollbar,
+  .text-area::-webkit-scrollbar { width: 4px; }
+  .settings::-webkit-scrollbar-track,
+  .text-area::-webkit-scrollbar-track { background: transparent; }
+  .settings::-webkit-scrollbar-thumb,
+  .text-area::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
   }
 </style>
 </head>
 <body>
 <div class="window">
-  <!-- Header -->
-  <div class="header" data-tauri-drag-region>
+  <div class="header">
     <div class="logo" data-tauri-drag-region>&#127908;</div>
     <div class="title-group" data-tauri-drag-region>
-      <div class="title" data-tauri-drag-region>Typeoff</div>
-      <div class="subtitle" data-tauri-drag-region>Offline voice-to-text</div>
+      <div class="title">Typeoff</div>
+      <div class="subtitle">Offline voice-to-text</div>
     </div>
-    <div class="waveform" id="waveform" data-tauri-drag-region>
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-    </div>
+    <div class="header-drag-fill" data-tauri-drag-region></div>
     <div class="timer" id="timer" data-tauri-drag-region></div>
     <div class="header-actions">
-      <button class="icon-btn" id="btnSettings" onclick="toggleSettings()" title="Settings">&#9881;</button>
-      <button class="icon-btn minimize" onclick="minimizeWindow()" title="Minimize">&#8211;</button>
-      <button class="icon-btn close" onclick="closeWindow()" title="Close">&#10005;</button>
+      <button class="icon-btn" id="btnSettings" type="button" title="Settings">&#9881;</button>
+      <button class="icon-btn minimize" id="btnMinimize" type="button" title="Minimize">&#8211;</button>
+      <button class="icon-btn close" id="btnClose" type="button" title="Close">&#10005;</button>
     </div>
   </div>
 
-  <!-- Page: Main -->
   <div class="page active" id="pageMain">
     <div class="status-bar">
       <div class="status-pill" id="statusPill">
@@ -287,7 +429,26 @@
 
     <div class="text-area">
       <div class="text-content empty" id="textContent">
-        Press <kbd>Shift</kbd> + <kbd>Shift</kbd> to start recording
+        <div class="startup-flash">
+          <div class="startup-kicker">Tray Ready</div>
+          <div class="startup-mark">&#127908;</div>
+          <div class="startup-title">Type Off Your Voice</div>
+          <div class="startup-subtitle">Speak naturally and let the recorder overlay float above the taskbar with wave amp and live word buffer while the main window stays out of the way.</div>
+          <div class="startup-status">
+            <div class="startup-label">Startup Flash</div>
+            <div class="startup-value">Double Shift starts a fresh voice pass and opens the floating recorder bar.</div>
+          </div>
+          <div class="startup-buffer">
+            <div class="startup-buffer-line">
+              <span class="startup-buffer-key">Overlay</span>
+              <span class="startup-buffer-val">Appears only while recording or transcribing</span>
+            </div>
+            <div class="startup-buffer-line">
+              <span class="startup-buffer-key">Word Buffer</span>
+              <span class="startup-buffer-val">Blue text is still settling before lock</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -296,17 +457,14 @@
         <kbd>Shift</kbd> + <kbd>Shift</kbd>
       </div>
       <div class="btn-row">
-        <button class="btn" id="btnCopy" onclick="copyText()">Copy</button>
-        <button class="btn primary" id="btnToggle" onclick="toggleRecord()">Record</button>
+        <button class="btn" id="btnCopy" type="button">Copy</button>
+        <button class="btn primary" id="btnToggle" type="button">Record</button>
       </div>
     </div>
   </div>
 
-  <!-- Page: Settings -->
   <div class="page" id="pageSettings">
     <div class="settings" id="settingsPanel">
-
-      <!-- Model -->
       <div class="settings-section">
         <div class="settings-section-title">Model</div>
         <div class="setting-row">
@@ -314,11 +472,9 @@
             <div class="setting-label">Whisper Model</div>
             <div class="setting-desc" id="modelDesc">Good balance of speed and accuracy</div>
           </div>
-          <select class="setting-select" id="setModel" onchange="onModelChange()"></select>
+          <select class="setting-select" id="setModel"></select>
         </div>
       </div>
-
-      <!-- Language -->
       <div class="settings-section">
         <div class="settings-section-title">Language</div>
         <div class="setting-row">
@@ -326,8 +482,6 @@
           <select class="setting-select" id="setLanguage"></select>
         </div>
       </div>
-
-      <!-- Input Device -->
       <div class="settings-section">
         <div class="settings-section-title">Audio</div>
         <div class="setting-row">
@@ -338,8 +492,6 @@
           <div class="setting-value">System Default</div>
         </div>
       </div>
-
-      <!-- Hotkey -->
       <div class="settings-section">
         <div class="settings-section-title">Keyboard Shortcut</div>
         <div class="setting-row">
@@ -350,8 +502,6 @@
           <div class="setting-value">Double Shift</div>
         </div>
       </div>
-
-      <!-- Behavior -->
       <div class="settings-section">
         <div class="settings-section-title">Behavior</div>
         <div class="setting-row">
@@ -393,8 +543,6 @@
           </select>
         </div>
       </div>
-
-      <!-- LLM Correction -->
       <div class="settings-section">
         <div class="settings-section-title">Text Correction</div>
         <div class="setting-row">
@@ -409,8 +557,6 @@
           </select>
         </div>
       </div>
-
-      <!-- System -->
       <div class="settings-section">
         <div class="settings-section-title">System</div>
         <div class="setting-row">
@@ -429,71 +575,97 @@
             <div class="setting-desc">Launch Typeoff when you log in</div>
           </div>
           <label class="setting-toggle">
-            <input type="checkbox" id="setAutostart" onchange="toggleAutostart()">
+            <input type="checkbox" id="setAutostart">
             <span class="slider"></span>
           </label>
         </div>
       </div>
-
-      <!-- Save -->
       <div style="padding: 4px 0 8px; -webkit-app-region: no-drag;">
-        <button class="btn primary" style="width:100%; padding:8px;" onclick="saveSettings()">Save Settings</button>
+        <button class="btn primary" id="btnSaveSettings" type="button" style="width:100%; padding:8px;">Save Settings</button>
       </div>
-
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast">Settings saved</div>
-
 <script>
-  const { invoke } = window.__TAURI__.core;
-  const { getCurrentWindow } = window.__TAURI__.window;
+  function tauriInvoke(command, args = {}) {
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (!invoke) throw new Error('Tauri invoke unavailable');
+    return invoke(command, args);
+  }
 
-  // ─── State ───
-  let currentStatus = 'loading';
+  function getAppWindow() {
+    return window.__TAURI__?.window?.getCurrentWindow?.()
+      || window.__TAURI__?.webviewWindow?.getCurrentWindow?.()
+      || null;
+  }
+
+  function bindClick(id, handler) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      try {
+        await handler(event);
+      } catch (error) {
+        console.error(`[typeoff] ${id} failed`, error);
+      }
+    });
+  }
+
+  function bindUi() {
+    bindClick('btnSettings', toggleSettings);
+    bindClick('btnMinimize', minimizeWindow);
+    bindClick('btnClose', closeWindow);
+    bindClick('btnCopy', copyText);
+    bindClick('btnToggle', toggleRecord);
+    bindClick('btnSaveSettings', saveSettings);
+    document.getElementById('setModel')?.addEventListener('change', onModelChange);
+    document.getElementById('setAutostart')?.addEventListener('change', toggleAutostart);
+  }
+
   let settingsOpen = false;
   let config = {};
+  let allModels = [];
+  let latestText = '';
 
-  // ─── Init ───
   async function init() {
     try {
-      config = await invoke('get_config');
+      config = await tauriInvoke('get_config');
       await populateSettings();
       await initAutostart();
       await checkModelStatus();
       await checkPermissions();
-    } catch(e) {
+    } catch (error) {
+      console.error('[typeoff] init retry', error);
       setTimeout(init, 500);
     }
   }
-  window.addEventListener('DOMContentLoaded', () => setTimeout(init, 300));
 
-  // ─── Model download ───
-  let allModels = [];
+  window.addEventListener('DOMContentLoaded', () => {
+    bindUi();
+    setTimeout(init, 300);
+  });
 
   async function checkModelStatus() {
     try {
-      const status = await invoke('check_model');
+      const status = await tauriInvoke('check_model');
       if (!status.installed) {
-        // Show download prompt
-        const model = allModels.find(m => m.id === status.model);
+        const model = allModels.find((item) => item.id === status.model);
         const size = model ? model.size : '~500MB';
         document.getElementById('textContent').className = 'text-content empty';
         document.getElementById('textContent').innerHTML =
           `<div style="text-align:center; padding: 20px 0;">
-            <div style="font-size: 13px; color: #cdd6f4; margin-bottom: 8px;">
-              Model <b>${status.model}</b> not found
-            </div>
-            <div style="font-size: 11px; color: #6c7086; margin-bottom: 12px;">
-              Download required (${size})
-            </div>
-            <button class="btn primary" style="padding: 8px 20px;" onclick="downloadCurrentModel()">
-              Download Model
-            </button>
+            <div style="font-size: 13px; color: #cdd6f4; margin-bottom: 8px;">Model <b>${status.model}</b> not found</div>
+            <div style="font-size: 11px; color: #6c7086; margin-bottom: 12px;">Download required (${size})</div>
+            <button class="btn primary" type="button" style="padding: 8px 20px;" onclick="downloadCurrentModel()">Download Model</button>
           </div>`;
       }
-    } catch(e) {}
+    } catch (error) {
+      console.error('[typeoff] check_model failed', error);
+    }
   }
 
   async function downloadCurrentModel() {
@@ -501,88 +673,71 @@
     document.getElementById('textContent').innerHTML =
       '<div style="text-align:center; padding: 20px 0; color: #a6adc8;">Downloading model... This may take a few minutes.</div>';
     try {
-      const result = await invoke('download_model', { modelId });
+      await tauriInvoke('download_model', { modelId });
       showToast('Model downloaded!');
       await checkModelStatus();
-    } catch(e) {
+    } catch (error) {
       document.getElementById('textContent').innerHTML =
-        `<div style="text-align:center; padding: 20px 0; color: #f38ba8;">Download failed: ${e}</div>`;
+        `<div style="text-align:center; padding: 20px 0; color: #f38ba8;">Download failed: ${escapeHtml(String(error))}</div>`;
     }
   }
 
-  // ─── Permission check ───
   async function checkPermissions() {
     try {
-      const perms = await invoke('check_permissions');
+      const perms = await tauriInvoke('check_permissions');
       if (!perms.accessibility) {
-        // Show permission setup banner above the text area
         const banner = document.createElement('div');
         banner.id = 'permBanner';
         banner.style.cssText = 'margin: 8px 20px 0; padding: 10px 14px; background: rgba(250,179,135,0.12); border: 1px solid rgba(250,179,135,0.3); border-radius: 10px;';
         banner.innerHTML = `
-          <div style="font-size: 12px; color: #fab387; font-weight: 600; margin-bottom: 4px;">⚠ Accessibility Permission Required</div>
-          <div style="font-size: 11px; color: #a6adc8; margin-bottom: 8px;">
-            Typeoff needs Accessibility permission to paste text into other apps.<br>
-            Click below to open Settings, then add Typeoff (or Terminal) to the list.
-          </div>
-          <button class="btn" style="font-size: 11px; padding: 5px 12px; color: #fab387; border-color: rgba(250,179,135,0.3);" onclick="openAccessibility()">
-            Open Accessibility Settings
-          </button>
-          <button class="btn" style="font-size: 11px; padding: 5px 12px; margin-left: 6px;" onclick="dismissPermBanner()">
-            Dismiss
-          </button>
+          <div style="font-size: 12px; color: #fab387; font-weight: 600; margin-bottom: 4px;">Accessibility Permission Required</div>
+          <div style="font-size: 11px; color: #a6adc8; margin-bottom: 8px;">Typeoff needs Accessibility permission to paste text into other apps.<br>Click below to open Settings, then add Typeoff (or Terminal) to the list.</div>
+          <button class="btn" type="button" style="font-size: 11px; padding: 5px 12px; color: #fab387; border-color: rgba(250,179,135,0.3);" onclick="openAccessibility()">Open Accessibility Settings</button>
+          <button class="btn" type="button" style="font-size: 11px; padding: 5px 12px; margin-left: 6px;" onclick="dismissPermBanner()">Dismiss</button>
         `;
         const textArea = document.querySelector('.text-area');
         textArea.parentNode.insertBefore(banner, textArea);
       }
-    } catch(e) {}
+    } catch (error) {
+      console.error('[typeoff] check_permissions failed', error);
+    }
   }
 
   async function openAccessibility() {
-    await invoke('open_accessibility_settings');
+    await tauriInvoke('open_accessibility_settings');
   }
 
   function dismissPermBanner() {
-    const banner = document.getElementById('permBanner');
-    if (banner) banner.remove();
+    document.getElementById('permBanner')?.remove();
   }
 
-  // ─── Settings population ───
   async function populateSettings() {
-    // Models
-    allModels = await invoke('get_models');
-    const selModel = document.getElementById('setModel');
-    selModel.innerHTML = allModels.map(m =>
-      `<option value="${m.id}" ${m.id === config.model ? 'selected' : ''}>${m.name} (${m.size})</option>`
+    allModels = await tauriInvoke('get_models');
+    const modelSelect = document.getElementById('setModel');
+    modelSelect.innerHTML = allModels.map((model) =>
+      `<option value="${model.id}" ${model.id === config.model ? 'selected' : ''}>${model.name} (${model.size})</option>`
     ).join('');
     onModelChange();
 
-    // Languages
-    const langs = await invoke('get_languages');
-    const selLang = document.getElementById('setLanguage');
+    const languages = await tauriInvoke('get_languages');
     const selectedLanguage = config.language || 'auto';
-    selLang.innerHTML = langs.map(l =>
-      `<option value="${l.id}" ${l.id === selectedLanguage ? 'selected' : ''}>${l.name}</option>`
+    const languageSelect = document.getElementById('setLanguage');
+    languageSelect.innerHTML = languages.map((language) =>
+      `<option value="${language.id}" ${language.id === selectedLanguage ? 'selected' : ''}>${language.name}</option>`
     ).join('');
 
-    // Toggles
     document.getElementById('setAutoPaste').checked = config.auto_paste !== false;
     document.getElementById('setAutoStop').checked = config.auto_stop_silence !== false;
     document.getElementById('setUseGpu').checked = config.use_gpu === true;
     document.getElementById('setCorrectionMode').value = config.correction_mode || 'off';
-
-    // Silence duration
     document.getElementById('setSilenceDur').value = String(config.silence_duration || 2.0);
-
-    // Max duration
     document.getElementById('setMaxDur').value = String(config.max_duration || 60);
-
     updateHotkeyHint();
   }
 
   function onModelChange() {
-    const val = document.getElementById('setModel').value;
-    const model = allModels.find(m => m.id === val);
+    const value = document.getElementById('setModel').value;
+    const model = allModels.find((item) => item.id === value);
     document.getElementById('modelDesc').textContent = model ? model.desc : '';
   }
 
@@ -590,24 +745,25 @@
     document.getElementById('hotkeyHint').innerHTML = '<kbd>Shift</kbd> + <kbd>Shift</kbd>';
   }
 
-  // ─── Autostart ───
   async function initAutostart() {
     try {
-      const enabled = await invoke('plugin:autostart|is_enabled');
+      const enabled = await tauriInvoke('plugin:autostart|is_enabled');
       document.getElementById('setAutostart').checked = enabled;
-    } catch(e) {}
+    } catch (error) {
+      console.error('[typeoff] autostart init failed', error);
+    }
   }
 
   async function toggleAutostart() {
     const checked = document.getElementById('setAutostart').checked;
     try {
       if (checked) {
-        await invoke('plugin:autostart|enable');
+        await tauriInvoke('plugin:autostart|enable');
       } else {
-        await invoke('plugin:autostart|disable');
+        await tauriInvoke('plugin:autostart|disable');
       }
-    } catch(e) {
-      console.error('Autostart error:', e);
+    } catch (error) {
+      console.error('[typeoff] autostart toggle failed', error);
     }
   }
 
@@ -619,16 +775,16 @@
       auto_paste: document.getElementById('setAutoPaste').checked,
       auto_stop_silence: document.getElementById('setAutoStop').checked,
       silence_duration: parseFloat(document.getElementById('setSilenceDur').value),
-      max_duration: parseInt(document.getElementById('setMaxDur').value),
+      max_duration: parseInt(document.getElementById('setMaxDur').value, 10),
+      correction_mode: document.getElementById('setCorrectionMode').value,
     };
 
-    config = {...config, ...newConfig};
-    const result = await invoke('save_config', { newConfig });
+    config = { ...config, ...newConfig };
+    const result = await tauriInvoke('save_config', { newConfig });
     updateHotkeyHint();
 
     if (result && result.needsDownload) {
-      showToast('Model not found — switch to main page to download');
-      // Switch to main page and show download prompt
+      showToast('Model not found - switch to main page to download');
       if (settingsOpen) toggleSettings();
       await checkModelStatus();
     } else {
@@ -636,14 +792,13 @@
     }
   }
 
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2000);
+  function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
   }
 
-  // ─── Page switching ───
   function toggleSettings() {
     settingsOpen = !settingsOpen;
     document.getElementById('pageMain').classList.toggle('active', !settingsOpen);
@@ -651,69 +806,67 @@
     document.getElementById('btnSettings').classList.toggle('active', settingsOpen);
   }
 
-  // ─── UI Update ───
+  function renderStartupFlash() {
+    return `
+      <div class="startup-flash">
+        <div class="startup-kicker">Tray Ready</div>
+        <div class="startup-mark">&#127908;</div>
+        <div class="startup-title">Type Off Your Voice</div>
+        <div class="startup-subtitle">Speak naturally and let the recorder overlay float above the taskbar with wave amp and live word buffer while the main window stays out of the way.</div>
+        <div class="startup-status">
+          <div class="startup-label">Startup Flash</div>
+          <div class="startup-value">Double Shift starts a fresh voice pass and opens the floating recorder bar.</div>
+        </div>
+        <div class="startup-buffer">
+          <div class="startup-buffer-line">
+            <span class="startup-buffer-key">Overlay</span>
+            <span class="startup-buffer-val">Appears only while recording or transcribing</span>
+          </div>
+          <div class="startup-buffer-line">
+            <span class="startup-buffer-key">Word Buffer</span>
+            <span class="startup-buffer-val">Blue text is still settling before lock</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
   function updateUI(state) {
     const pill = document.getElementById('statusPill');
     const statusText = document.getElementById('statusText');
     const timer = document.getElementById('timer');
     const textContent = document.getElementById('textContent');
-    const waveform = document.getElementById('waveform');
     const btnToggle = document.getElementById('btnToggle');
 
-    currentStatus = state.status;
-    pill.className = 'status-pill ' + state.status;
+    latestText = state.text || '';
+    pill.className = `status-pill ${state.status}`;
     statusText.textContent = state.message;
 
     if (state.status === 'recording') {
       const secs = Math.floor(state.elapsed);
       const mins = Math.floor(secs / 60);
-      const s = secs % 60;
-      timer.textContent = mins > 0 ? `${mins}:${String(s).padStart(2, '0')}` : `${s}s`;
+      const remainder = secs % 60;
+      timer.textContent = mins > 0 ? `${mins}:${String(remainder).padStart(2, '0')}` : `${secs}s`;
       timer.className = 'timer active';
     } else {
       timer.textContent = '';
       timer.className = 'timer';
     }
 
-    waveform.className = state.status === 'recording' ? 'waveform active' : 'waveform';
-
-    // Drive waveform bars from real RMS
-    if (state.status === 'recording' && state.rms > 0) {
-      const bars = waveform.querySelectorAll('.bar');
-      const rms = Math.min(state.rms * 5, 1.0); // normalize (typical speech RMS 0.01-0.2)
-      bars.forEach((bar, i) => {
-        const jitter = 0.5 + Math.random() * 0.5; // randomize per bar
-        const h = Math.max(3, Math.round(rms * 20 * jitter));
-        bar.style.height = h + 'px';
-      });
-    } else if (state.status !== 'recording') {
-      const bars = waveform.querySelectorAll('.bar');
-      bars.forEach(bar => bar.style.height = '4px');
-    }
-
     if (state.text) {
       textContent.className = 'text-content';
       const confirmed = escapeHtml(state.confirmed_text || '');
       const pending = escapeHtml(state.pending_text || '');
-      let html = '';
-      if (confirmed) {
-        html += `<span class="text-confirmed">${confirmed}</span>`;
-      }
-      if (pending) {
-        html += `<span class="text-pending">${pending}</span>`;
-      }
-      if (!html) {
-        html = escapeHtml(state.text);
-      }
+      let html = pending ? '<div class="buffer-meta"><span class="buffer-dot"></span>Word Buffer Active</div>' : '';
+      if (confirmed) html += `<span class="text-confirmed">${confirmed}</span>`;
+      if (pending) html += `<span class="text-pending">${pending}</span>`;
+      if (!html) html = escapeHtml(state.text);
       if (state.status === 'recording' || state.status === 'transcribing') {
         html += '<span class="cursor-blink"></span>';
       }
       textContent.innerHTML = html;
     } else if (state.status === 'ready' || state.status === 'loading') {
       textContent.className = 'text-content empty';
-      updateHotkeyHint();
-      const hint = document.getElementById('hotkeyHint').innerHTML;
-      textContent.innerHTML = `Press ${hint} to start recording`;
+      textContent.innerHTML = renderStartupFlash();
     }
 
     if (state.status === 'recording') {
@@ -731,43 +884,48 @@
   }
 
   function escapeHtml(text) {
-    const d = document.createElement('div');
-    d.textContent = text;
-    return d.innerHTML;
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   async function toggleRecord() {
-    await invoke('toggle_recording');
+    await tauriInvoke('toggle_recording');
   }
 
   async function minimizeWindow() {
-    const { getCurrentWindow } = window.__TAURI__.window;
-    await getCurrentWindow().minimize();
+    await getAppWindow()?.minimize?.();
   }
 
   async function closeWindow() {
-    const { getCurrentWindow } = window.__TAURI__.window;
-    await getCurrentWindow().close();
+    await getAppWindow()?.close?.();
   }
 
-  function copyText() {
-    const text = document.getElementById('textContent').textContent;
-    if (text && navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => {
-        const btn = document.getElementById('btnCopy');
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
-      });
+  async function copyText() {
+    const text = latestText.trim() || document.getElementById('textContent').textContent.trim();
+    if (!text) return;
+    try {
+      await tauriInvoke('copy_text', { text });
+    } catch (error) {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw error;
+      }
     }
+    const button = document.getElementById('btnCopy');
+    button.textContent = 'Copied!';
+    setTimeout(() => { button.textContent = 'Copy'; }, 1500);
   }
 
-  // Poll state every 300ms
   setInterval(async () => {
     try {
-      const state = await invoke('get_state');
+      const state = await tauriInvoke('get_state');
       if (state && state.status) updateUI(state);
-    } catch(e) {}
-  }, 300);
+    } catch (error) {
+      console.error('[typeoff] state poll failed', error);
+    }
+  }, 250);
 </script>
 </body>
 </html>

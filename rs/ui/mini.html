@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typeoff Overlay</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #151724;
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    color: #cdd6f4;
+  }
+  body { border-radius: 16px; }
+  .shell {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+      #151724;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #f38ba8;
+    flex-shrink: 0;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .waveform {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .bar {
+    width: 3px;
+    min-height: 3px;
+    border-radius: 999px;
+    background: #f38ba8;
+    transition: height 0.12s ease;
+  }
+  .copy {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6c7086;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .buffer {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #dfe4ff;
+  }
+  .buffer.pending { color: #89b4fa; }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .timer, .perf {
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .timer { color: #f38ba8; }
+  .timer.transcribing { color: #fab387; }
+  .timer.done { color: #a6e3a1; }
+  .perf { color: #6c7086; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.72); }
+  }
+</style>
+</head>
+<body>
+  <div class="shell" data-tauri-drag-region>
+    <div class="dot" id="dot"></div>
+    <div class="waveform" id="waveform"></div>
+    <div class="copy">
+      <div class="label" id="label">Word Buffer</div>
+      <div class="buffer" id="buffer">Recording...</div>
+    </div>
+    <div class="meta">
+      <div class="perf" id="perf"></div>
+      <div class="timer" id="timer">0s</div>
+    </div>
+  </div>
+<script>
+  function tauriInvoke(command, args = {}) {
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (!invoke) throw new Error('Tauri invoke unavailable');
+    return invoke(command, args);
+  }
+
+  const waveform = document.getElementById('waveform');
+  const bars = [];
+  for (let i = 0; i < 16; i += 1) {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    waveform.appendChild(bar);
+    bars.push(bar);
+  }
+
+  function clip(text, size = 72) {
+    if (!text) return '';
+    return text.length > size ? `...${text.slice(-size)}` : text;
+  }
+
+  function render(state) {
+    const dot = document.getElementById('dot');
+    const label = document.getElementById('label');
+    const buffer = document.getElementById('buffer');
+    const timer = document.getElementById('timer');
+    const perf = document.getElementById('perf');
+
+    const levels = Array.isArray(state.spectrum) && state.spectrum.length
+      ? state.spectrum
+      : Array.from({ length: bars.length }, () => Math.min((state.rms || 0) * 10, 1));
+
+    let color = '#f38ba8';
+    if (state.status === 'transcribing') color = '#fab387';
+    if (state.status === 'done') color = '#a6e3a1';
+
+    bars.forEach((bar, index) => {
+      const level = Math.max(0, Math.min(levels[index] || 0, 1));
+      bar.style.height = `${Math.max(3, Math.round(4 + level * 20))}px`;
+      bar.style.background = color;
+    });
+
+    dot.style.background = color;
+
+    if (state.status === 'recording') {
+      const secs = Math.floor(state.elapsed || 0);
+      const mins = Math.floor(secs / 60);
+      const remainder = secs % 60;
+      label.textContent = state.pending_text ? 'Word Buffer' : 'Listening';
+      buffer.className = state.pending_text ? 'buffer pending' : 'buffer';
+      buffer.textContent = clip(state.pending_text || state.text || 'Recording...');
+      timer.className = 'timer';
+      timer.textContent = mins > 0 ? `${mins}:${String(remainder).padStart(2, '0')}` : `${secs}s`;
+    } else if (state.status === 'transcribing') {
+      label.textContent = 'Transcribing';
+      buffer.className = 'buffer';
+      buffer.textContent = clip(state.pending_text || state.text || 'Finishing...');
+      timer.className = 'timer transcribing';
+      timer.textContent = '...';
+    } else {
+      label.textContent = 'Done';
+      buffer.className = 'buffer';
+      buffer.textContent = clip(state.text || 'Done');
+      timer.className = 'timer done';
+      timer.textContent = '';
+    }
+
+    if (state.last_pass_ms > 0) {
+      const ms = Math.round(state.last_pass_ms);
+      const factor = state.speed_factor > 0 ? `${state.speed_factor.toFixed(1)}x` : '';
+      perf.textContent = factor ? `${ms} ms ${factor}` : `${ms} ms`;
+    } else {
+      perf.textContent = '';
+    }
+  }
+
+  setInterval(async () => {
+    try {
+      const state = await tauriInvoke('get_state');
+      if (state && state.status) render(state);
+    } catch (error) {
+      console.error('[typeoff] mini state poll failed', error);
+    }
+  }, 180);
+</script>
+</body>
+</html>

@@ -4,9 +4,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use tauri::image::Image as TauriImage;
-use tauri::Manager;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 use typeoff::audio_filter;
 use typeoff::config::Config;
@@ -29,6 +29,9 @@ pub struct AppState {
     pub elapsed: f32,
     pub message: String,
     pub rms: f32,
+    pub spectrum: Vec<f32>,
+    pub last_pass_ms: f32,
+    pub speed_factor: f32,
 }
 
 impl Default for AppState {
@@ -41,6 +44,9 @@ impl Default for AppState {
             elapsed: 0.0,
             message: "Loading model...".into(),
             rms: 0.0,
+            spectrum: vec![0.0; 16],
+            last_pass_ms: 0.0,
+            speed_factor: 0.0,
         }
     }
 }
@@ -53,7 +59,12 @@ pub struct TauriState {
 }
 
 // Tray icon IDs
+const MAIN_WINDOW_ID: &str = "main";
+const MINI_WINDOW_ID: &str = "mini";
 const TRAY_ID: &str = "typeoff-tray";
+const WAVE_BANDS: usize = 16;
+const MINI_WIDTH: f64 = 520.0;
+const MINI_HEIGHT: f64 = 64.0;
 
 fn sync_text_state(state: &Arc<Mutex<AppState>>, streamer: &StreamingTranscriber) {
     let confirmed_text = streamer.confirmed_text();
@@ -66,6 +77,71 @@ fn sync_text_state(state: &Arc<Mutex<AppState>>, streamer: &StreamingTranscriber
     app_state.text = display_text;
 }
 
+fn rms(samples: &[f32]) -> f32 {
+    if samples.is_empty() {
+        return 0.0;
+    }
+
+    let power: f32 = samples.iter().map(|sample| sample * sample).sum();
+    (power / samples.len() as f32).sqrt()
+}
+
+fn analyze_audio_view(audio: &[f32]) -> (f32, Vec<f32>) {
+    if audio.is_empty() {
+        return (0.0, vec![0.0; WAVE_BANDS]);
+    }
+
+    let rms_tail = 1600.min(audio.len());
+    let wave_tail = 2048.min(audio.len());
+    let rms_value = rms(&audio[audio.len() - rms_tail..]);
+    let wave = &audio[audio.len() - wave_tail..];
+    let chunk_len = (wave.len() / WAVE_BANDS).max(1);
+
+    let mut levels = Vec::with_capacity(WAVE_BANDS);
+    for idx in 0..WAVE_BANDS {
+        let start = idx * chunk_len;
+        if start >= wave.len() {
+            levels.push(0.0);
+            continue;
+        }
+
+        let end = if idx == WAVE_BANDS - 1 {
+            wave.len()
+        } else {
+            ((idx + 1) * chunk_len).min(wave.len())
+        };
+        levels.push(rms(&wave[start..end]));
+    }
+
+    let peak = levels.iter().copied().fold(0.0, f32::max);
+    if peak > 0.0 {
+        for level in &mut levels {
+            *level = (*level / peak).sqrt().min(1.0);
+        }
+    }
+
+    (rms_value, levels)
+}
+
+fn update_pass_metrics(
+    state: &Arc<Mutex<AppState>>,
+    audio_len: usize,
+    sample_rate: u32,
+    elapsed: Duration,
+) {
+    let pass_secs = elapsed.as_secs_f32();
+    let audio_secs = audio_len as f32 / sample_rate as f32;
+    let speed_factor = if pass_secs > 0.0 {
+        audio_secs / pass_secs
+    } else {
+        0.0
+    };
+
+    let mut app_state = state.lock().unwrap();
+    app_state.last_pass_ms = pass_secs * 1000.0;
+    app_state.speed_factor = speed_factor;
+}
+
 fn set_tray_recording(app: &tauri::AppHandle, recording: bool) {
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         let icon_bytes = if recording {
@@ -76,55 +152,110 @@ fn set_tray_recording(app: &tauri::AppHandle, recording: bool) {
         if let Ok(icon) = TauriImage::from_bytes(icon_bytes) {
             let _ = tray.set_icon(Some(icon));
         }
-        let tooltip = if recording { "Typeoff — Recording..." } else { "Typeoff — Double Shift to record" };
+        let tooltip = if recording {
+            "Typeoff — Recording..."
+        } else {
+            "Typeoff — Double Shift to record"
+        };
         let _ = tray.set_tooltip(Some(tooltip));
+    }
+}
+
+fn mini_overlay_position(window: &tauri::WebviewWindow) -> (f64, f64) {
+    if let Ok(Some(monitor)) = window
+        .current_monitor()
+        .or_else(|_| window.primary_monitor())
+    {
+        let scale = monitor.scale_factor().max(1.0);
+        let work_area = monitor.work_area();
+        let x = work_area.position.x as f64 / scale
+            + (work_area.size.width as f64 / scale - MINI_WIDTH) / 2.0;
+        let y = work_area.position.y as f64 / scale + work_area.size.height as f64 / scale
+            - MINI_HEIGHT
+            - 18.0;
+        return (x.max(0.0), y.max(0.0));
+    }
+
+    (320.0, 720.0)
+}
+
+fn show_mini_overlay(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window(MINI_WINDOW_ID) {
+        let _ = window.show();
+    }
+}
+
+fn hide_mini_overlay(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window(MINI_WINDOW_ID) {
+        let _ = window.hide();
     }
 }
 
 // ─── Models / Languages / Hotkeys lists ──────────────────────────
 
 #[derive(Serialize)]
-struct ModelInfo { id: String, name: String, desc: String, size: String, url: String }
+struct ModelInfo {
+    id: String,
+    name: String,
+    desc: String,
+    size: String,
+    url: String,
+}
 
 #[derive(Serialize)]
-struct LangInfo { id: String, name: String }
+struct LangInfo {
+    id: String,
+    name: String,
+}
 
 #[derive(Serialize)]
-struct HotkeyInfo { id: String, name: String }
+struct HotkeyInfo {
+    id: String,
+    name: String,
+}
 
 #[derive(Serialize)]
-struct ModelStatus { installed: bool, path: String, model: String }
+struct ModelStatus {
+    installed: bool,
+    path: String,
+    model: String,
+}
 
 const WHISPER_BASE_URL: &str = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
 
 fn get_models_list() -> Vec<ModelInfo> {
     vec![
         ModelInfo {
-            id: "small".into(), name: "Small".into(),
+            id: "small".into(),
+            name: "Small".into(),
             desc: "Good balance (multilingual)".into(),
             size: "465 MB".into(),
             url: format!("{}/ggml-small.bin", WHISPER_BASE_URL),
         },
         ModelInfo {
-            id: "base".into(), name: "Base".into(),
+            id: "base".into(),
+            name: "Base".into(),
             desc: "Fast, basic accuracy".into(),
             size: "142 MB".into(),
             url: format!("{}/ggml-base.bin", WHISPER_BASE_URL),
         },
         ModelInfo {
-            id: "tiny".into(), name: "Tiny".into(),
+            id: "tiny".into(),
+            name: "Tiny".into(),
             desc: "Fastest, lower accuracy".into(),
             size: "75 MB".into(),
             url: format!("{}/ggml-tiny.bin", WHISPER_BASE_URL),
         },
         ModelInfo {
-            id: "medium".into(), name: "Medium".into(),
+            id: "medium".into(),
+            name: "Medium".into(),
             desc: "High accuracy, slower".into(),
             size: "1.5 GB".into(),
             url: format!("{}/ggml-medium.bin", WHISPER_BASE_URL),
         },
         ModelInfo {
-            id: "large-v3".into(), name: "Large v3".into(),
+            id: "large-v3".into(),
+            name: "Large v3".into(),
             desc: "Best accuracy, slowest".into(),
             size: "3.1 GB".into(),
             url: format!("{}/ggml-large-v3.bin", WHISPER_BASE_URL),
@@ -134,22 +265,55 @@ fn get_models_list() -> Vec<ModelInfo> {
 
 fn get_languages_list() -> Vec<LangInfo> {
     vec![
-        LangInfo { id: "auto".into(), name: "Auto-detect".into() },
-        LangInfo { id: "en".into(), name: "English".into() },
-        LangInfo { id: "zh".into(), name: "Chinese / 中文".into() },
-        LangInfo { id: "ja".into(), name: "Japanese / 日本語".into() },
-        LangInfo { id: "ko".into(), name: "Korean / 한국어".into() },
-        LangInfo { id: "es".into(), name: "Spanish / Español".into() },
-        LangInfo { id: "fr".into(), name: "French / Français".into() },
-        LangInfo { id: "de".into(), name: "German / Deutsch".into() },
+        LangInfo {
+            id: "auto".into(),
+            name: "Auto-detect".into(),
+        },
+        LangInfo {
+            id: "en".into(),
+            name: "English".into(),
+        },
+        LangInfo {
+            id: "zh".into(),
+            name: "Chinese / 中文".into(),
+        },
+        LangInfo {
+            id: "ja".into(),
+            name: "Japanese / 日本語".into(),
+        },
+        LangInfo {
+            id: "ko".into(),
+            name: "Korean / 한국어".into(),
+        },
+        LangInfo {
+            id: "es".into(),
+            name: "Spanish / Español".into(),
+        },
+        LangInfo {
+            id: "fr".into(),
+            name: "French / Français".into(),
+        },
+        LangInfo {
+            id: "de".into(),
+            name: "German / Deutsch".into(),
+        },
     ]
 }
 
 fn get_hotkeys_list() -> Vec<HotkeyInfo> {
     vec![
-        HotkeyInfo { id: "double_shift".into(), name: "Double Shift (recommended)".into() },
-        HotkeyInfo { id: "ctrl+shift+space".into(), name: "Ctrl + Shift + Space".into() },
-        HotkeyInfo { id: "ctrl+space".into(), name: "Ctrl + Space".into() },
+        HotkeyInfo {
+            id: "double_shift".into(),
+            name: "Double Shift (recommended)".into(),
+        },
+        HotkeyInfo {
+            id: "ctrl+shift+space".into(),
+            name: "Ctrl + Shift + Space".into(),
+        },
+        HotkeyInfo {
+            id: "ctrl+space".into(),
+            name: "Ctrl + Space".into(),
+        },
     ]
 }
 
@@ -206,12 +370,20 @@ fn get_state(state: tauri::State<TauriState>) -> AppState {
 }
 
 #[tauri::command]
+fn copy_text(text: String) -> Result<(), String> {
+    paster::copy_text(&text)
+}
+
+#[tauri::command]
 fn get_config(state: tauri::State<TauriState>) -> Config {
     state.config.lock().unwrap().clone()
 }
 
 #[tauri::command]
-fn save_config(state: tauri::State<TauriState>, new_config: serde_json::Value) -> serde_json::Value {
+fn save_config(
+    state: tauri::State<TauriState>,
+    new_config: serde_json::Value,
+) -> serde_json::Value {
     let old_model;
     let new_model;
 
@@ -226,7 +398,9 @@ fn save_config(state: tauri::State<TauriState>, new_config: serde_json::Value) -
                         map.insert(k, v);
                     }
                 }
-                if let Ok(updated) = serde_json::from_value::<Config>(serde_json::Value::Object(map)) {
+                if let Ok(updated) =
+                    serde_json::from_value::<Config>(serde_json::Value::Object(map))
+                {
                     updated.save();
                     *config = updated;
                 }
@@ -250,6 +424,8 @@ fn save_config(state: tauri::State<TauriState>, new_config: serde_json::Value) -
                 let mut s = app_state.lock().unwrap();
                 s.status = "loading".into();
                 s.message = format!("Loading {}...", new_model);
+                s.last_pass_ms = 0.0;
+                s.speed_factor = 0.0;
             }
 
             thread::spawn(move || {
@@ -258,6 +434,8 @@ fn save_config(state: tauri::State<TauriState>, new_config: serde_json::Value) -
                 let mut s = app_state.lock().unwrap();
                 s.status = "ready".into();
                 s.message = format!("Ready — whisper-{}", config.model);
+                s.last_pass_ms = 0.0;
+                s.speed_factor = 0.0;
             });
 
             return serde_json::json!({"ok": true, "message": "Loading new model..."});
@@ -271,13 +449,19 @@ fn save_config(state: tauri::State<TauriState>, new_config: serde_json::Value) -
 }
 
 #[tauri::command]
-fn get_models() -> Vec<ModelInfo> { get_models_list() }
+fn get_models() -> Vec<ModelInfo> {
+    get_models_list()
+}
 
 #[tauri::command]
-fn get_languages() -> Vec<LangInfo> { get_languages_list() }
+fn get_languages() -> Vec<LangInfo> {
+    get_languages_list()
+}
 
 #[tauri::command]
-fn get_hotkeys() -> Vec<HotkeyInfo> { get_hotkeys_list() }
+fn get_hotkeys() -> Vec<HotkeyInfo> {
+    get_hotkeys_list()
+}
 
 /// Check if the current whisper model is installed
 #[tauri::command]
@@ -296,7 +480,9 @@ fn check_model(state: tauri::State<TauriState>) -> ModelStatus {
 #[tauri::command]
 fn download_model(state: tauri::State<TauriState>, model_id: String) -> Result<String, String> {
     let models = get_models_list();
-    let model = models.iter().find(|m| m.id == model_id)
+    let model = models
+        .iter()
+        .find(|m| m.id == model_id)
         .ok_or_else(|| format!("Unknown model: {}", model_id))?;
 
     let models_dir = Config::models_dir();
@@ -328,6 +514,8 @@ fn download_model(state: tauri::State<TauriState>, model_id: String) -> Result<S
             let mut s = state.state.lock().unwrap();
             s.status = "ready".into();
             s.message = format!("Ready — whisper-{}", model_id);
+            s.last_pass_ms = 0.0;
+            s.speed_factor = 0.0;
 
             Ok(format!("Downloaded to {}", dest.display()))
         }
@@ -335,12 +523,19 @@ fn download_model(state: tauri::State<TauriState>, model_id: String) -> Result<S
             let mut s = state.state.lock().unwrap();
             s.status = "ready".into();
             s.message = "Download failed".into();
-            Err(format!("curl failed: {}", String::from_utf8_lossy(&output.stderr)))
+            s.last_pass_ms = 0.0;
+            s.speed_factor = 0.0;
+            Err(format!(
+                "curl failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ))
         }
         Err(e) => {
             let mut s = state.state.lock().unwrap();
             s.status = "ready".into();
             s.message = "Download failed".into();
+            s.last_pass_ms = 0.0;
+            s.speed_factor = 0.0;
             Err(format!("Failed to run curl: {}", e))
         }
     }
@@ -369,6 +564,7 @@ fn toggle_recording(state: tauri::State<TauriState>) {
             // Switch tray icon to recording
             if let Some(ref app) = *state.app_handle.lock().unwrap() {
                 set_tray_recording(app, true);
+                show_mini_overlay(app);
             }
 
             let app_state = Arc::clone(&state.state);
@@ -389,10 +585,14 @@ fn toggle_recording(state: tauri::State<TauriState>) {
                 s.status = "ready".into();
                 s.message = "Ready".into();
                 s.rms = 0.0;
+                s.spectrum.fill(0.0);
+                s.last_pass_ms = 0.0;
+                s.speed_factor = 0.0;
 
                 // Switch tray icon back to idle
                 if let Some(ref app) = *app_handle.lock().unwrap() {
                     set_tray_recording(app, false);
+                    hide_mini_overlay(app);
                 }
             });
         }
@@ -410,10 +610,7 @@ fn run_session(
     let mut recorder = Recorder::new(config.sample_rate, config.max_duration);
     let vad = Vad::new(config.silence_duration, config.sample_rate);
     let mut streamer = StreamingTranscriber::new();
-    let mut corrector = Corrector::new(
-        &config.correction_mode,
-        config.get_correction_model_path(),
-    );
+    let mut corrector = Corrector::new(&config.correction_mode, config.get_correction_model_path());
 
     {
         let mut s = state.lock().unwrap();
@@ -424,10 +621,19 @@ fn run_session(
         s.elapsed = 0.0;
         s.message = "Listening...".into();
         s.rms = 0.0;
+        s.spectrum.fill(0.0);
+        s.last_pass_ms = 0.0;
+        s.speed_factor = 0.0;
     }
 
     recorder.start();
     let start = Instant::now();
+    let transcribe_interval = if config.use_gpu {
+        Duration::from_millis(1200)
+    } else {
+        Duration::from_millis(2500)
+    };
+    let first_pass_after = if config.use_gpu { 0.8 } else { 1.5 };
     let mut last_transcribe = Instant::now() - Duration::from_secs(10);
 
     // Recording loop
@@ -443,9 +649,11 @@ fn run_session(
         let elapsed = start.elapsed().as_secs_f32();
 
         {
+            let (rms, spectrum) = recorder.with_audio(analyze_audio_view);
             let mut s = state.lock().unwrap();
             s.elapsed = elapsed;
-            s.rms = recorder.tail_rms(1600);
+            s.rms = rms;
+            s.spectrum = spectrum;
         }
 
         if duration > config.max_duration {
@@ -453,22 +661,20 @@ fn run_session(
         }
 
         if config.auto_stop_silence && duration > config.silence_duration + 1.0 {
-            let should_stop = recorder.with_audio(|audio| {
-                vad.has_speech(audio) && vad.detect_end_of_speech(audio)
-            });
+            let should_stop = recorder
+                .with_audio(|audio| vad.has_speech(audio) && vad.detect_end_of_speech(audio));
             if should_stop {
                 break;
             }
         }
 
-        if duration >= 1.5 && last_transcribe.elapsed() >= Duration::from_secs(3) {
-            let has_speech = recorder.with_audio(|audio| vad.has_speech(audio));
-            if !has_speech {
+        if duration >= first_pass_after && last_transcribe.elapsed() >= transcribe_interval {
+            let window_audio = recorder.snapshot();
+            if window_audio.is_empty() {
                 continue;
             }
 
-            let window_audio = recorder.snapshot_from(streamer.window_start_sample());
-            if window_audio.is_empty() {
+            if !vad.has_speech(&window_audio) {
                 continue;
             }
 
@@ -477,7 +683,14 @@ fn run_session(
             let transcriber_guard = transcriber.lock().unwrap();
             if let Some(ref t) = *transcriber_guard {
                 let lang = config.effective_language();
+                let pass_started = Instant::now();
                 let (new_sentence, _pending) = streamer.rolling_transcribe(&filtered, t, lang);
+                update_pass_metrics(
+                    state,
+                    filtered.len(),
+                    config.sample_rate,
+                    pass_started.elapsed(),
+                );
                 drop(transcriber_guard);
                 last_transcribe = Instant::now();
 
@@ -494,6 +707,11 @@ fn run_session(
                 }
 
                 sync_text_state(state, &streamer);
+
+                let discard_samples = streamer.take_pending_discard_samples();
+                if discard_samples > 0 {
+                    recorder.discard_front(discard_samples);
+                }
             }
         }
     }
@@ -503,6 +721,7 @@ fn run_session(
         let mut s = state.lock().unwrap();
         s.status = "transcribing".into();
         s.message = "Transcribing...".into();
+        s.rms = 0.0;
     }
 
     let raw_audio = recorder.stop();
@@ -514,20 +733,26 @@ fn run_session(
         s.text.clear();
         s.confirmed_text.clear();
         s.pending_text.clear();
+        s.spectrum.fill(0.0);
+        s.last_pass_ms = 0.0;
+        s.speed_factor = 0.0;
         return;
     }
 
     let audio = audio_filter::voice_filter(&raw_audio, config.sample_rate);
-    let final_window = if streamer.window_start_sample() < audio.len() {
-        &audio[streamer.window_start_sample()..]
-    } else {
-        &[][..]
-    };
+    let final_window = audio.as_slice();
 
     let transcriber_guard = transcriber.lock().unwrap();
     if let Some(ref t) = *transcriber_guard {
         let lang = config.effective_language();
+        let pass_started = Instant::now();
         let (remainder, full_text) = streamer.final_transcribe(final_window, t, lang);
+        update_pass_metrics(
+            state,
+            final_window.len(),
+            config.sample_rate,
+            pass_started.elapsed(),
+        );
         drop(transcriber_guard);
 
         if config.auto_paste {
@@ -551,9 +776,11 @@ fn run_session(
             s.pending_text.clear();
             s.text = full_text;
             s.message = "Done!".into();
+            s.rms = 0.0;
+            s.spectrum.fill(0.0);
         }
 
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_millis(350));
     }
 
     // Caller (toggle_recording) handles resetting to "ready"
@@ -582,6 +809,8 @@ pub fn run() {
         let mut s = state_ref.lock().unwrap();
         s.status = "ready".into();
         s.message = format!("Ready — whisper-{}", config_clone.model);
+        s.last_pass_ms = 0.0;
+        s.speed_factor = 0.0;
     });
 
     // Hotkey listener on dedicated thread
@@ -616,6 +845,7 @@ pub fn run() {
                     // Switch tray to recording
                     if let Some(ref app) = *app_handle_hotkey.lock().unwrap() {
                         set_tray_recording(app, true);
+                        show_mini_overlay(app);
                     }
 
                     let app_state = Arc::clone(&state_hotkey);
@@ -634,10 +864,14 @@ pub fn run() {
                         s.status = "ready".into();
                         s.message = "Ready".into();
                         s.rms = 0.0;
+                        s.spectrum.fill(0.0);
+                        s.last_pass_ms = 0.0;
+                        s.speed_factor = 0.0;
 
                         // Switch tray back to idle
                         if let Some(ref app) = *app_handle.lock().unwrap() {
                             set_tray_recording(app, false);
+                            hide_mini_overlay(app);
                         }
                     });
                 }
@@ -674,11 +908,36 @@ pub fn run() {
             check_permissions,
             open_accessibility_settings,
             toggle_recording,
+            copy_text,
         ])
         .setup(|app| {
             // Store app handle for tray icon switching from background threads
             let state: tauri::State<TauriState> = app.state();
             *state.app_handle.lock().unwrap() = Some(app.handle().clone());
+
+            if app.get_webview_window(MINI_WINDOW_ID).is_none() {
+                if let Some(main_window) = app.get_webview_window(MAIN_WINDOW_ID) {
+                    let (mini_x, mini_y) = mini_overlay_position(&main_window);
+                    let _mini = WebviewWindowBuilder::new(
+                        app,
+                        MINI_WINDOW_ID,
+                        WebviewUrl::App("mini.html".into()),
+                    )
+                    .title("Typeoff Overlay")
+                    .inner_size(MINI_WIDTH, MINI_HEIGHT)
+                    .position(mini_x, mini_y)
+                    .resizable(false)
+                    .decorations(false)
+                    .always_on_top(true)
+                    .visible_on_all_workspaces(true)
+                    .skip_taskbar(true)
+                    .focused(false)
+                    .shadow(true)
+                    .accept_first_mouse(true)
+                    .visible(false)
+                    .build()?;
+                }
+            }
 
             // ─── System Tray ─────────────────────────────────
             let show = MenuItemBuilder::with_id("show", "Show Typeoff").build(app)?;
@@ -695,19 +954,17 @@ pub fn run() {
                 .icon(idle_icon)
                 .menu(&menu)
                 .tooltip("Typeoff — Double Shift to record")
-                .on_menu_event(|app, event| {
-                    match event.id().as_ref() {
-                        "show" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
                         }
-                        "quit" => {
-                            app.exit(0);
-                        }
-                        _ => {}
                     }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
                     // Double-click tray icon → show/hide window
@@ -743,7 +1000,8 @@ pub fn run() {
                     let key = CFString::new("AXTrustedCheckOptionPrompt");
                     let value = CFBoolean::true_value();
                     let options = CFDictionary::from_CFType_pairs(&[(key, value)]);
-                    let trusted = AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef() as *const _);
+                    let trusted =
+                        AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef() as *const _);
                     if trusted {
                         println!("[typeoff] Accessibility permission: granted");
                     } else {

@@ -2,7 +2,97 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::SampleFormat;
 use std::sync::{Arc, Mutex};
 
-type SharedAudioBuffer = Arc<Mutex<Vec<f32>>>;
+const COMPACT_THRESHOLD_SAMPLES: usize = 32_000;
+
+#[derive(Default)]
+struct AudioBuffer {
+    data: Vec<f32>,
+    start: usize,
+}
+
+impl AudioBuffer {
+    fn with_capacity(capacity: usize) -> Self {
+        Self {
+            data: Vec::with_capacity(capacity),
+            start: 0,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.data.len().saturating_sub(self.start)
+    }
+
+    fn as_slice(&self) -> &[f32] {
+        &self.data[self.start..]
+    }
+
+    fn clear(&mut self) {
+        self.data.clear();
+        self.start = 0;
+    }
+
+    fn append_capped(&mut self, samples: &[f32], max_samples: usize) {
+        if samples.is_empty() {
+            return;
+        }
+
+        let remaining = max_samples.saturating_sub(self.len());
+        if remaining == 0 {
+            return;
+        }
+
+        let samples = if samples.len() > remaining {
+            &samples[..remaining]
+        } else {
+            samples
+        };
+
+        self.compact_if_needed(samples.len());
+        self.data.extend_from_slice(samples);
+    }
+
+    fn snapshot(&self) -> Vec<f32> {
+        self.as_slice().to_vec()
+    }
+
+    fn snapshot_tail(&self, tail_samples: usize) -> Vec<f32> {
+        let audio = self.as_slice();
+        let start = audio.len().saturating_sub(tail_samples);
+        audio[start..].to_vec()
+    }
+
+    fn discard_front(&mut self, samples: usize) {
+        if samples == 0 {
+            return;
+        }
+
+        let discard = samples.min(self.len());
+        self.start += discard;
+
+        if self.start >= self.data.len() {
+            self.clear();
+        } else {
+            self.compact_if_needed(0);
+        }
+    }
+
+    fn compact_if_needed(&mut self, incoming: usize) {
+        if self.start == 0 {
+            return;
+        }
+
+        let should_compact = self.start >= COMPACT_THRESHOLD_SAMPLES
+            || self.start * 2 >= self.data.len()
+            || self.data.len() + incoming > self.data.capacity();
+
+        if should_compact {
+            self.data.drain(..self.start);
+            self.start = 0;
+        }
+    }
+}
+
+type SharedAudioBuffer = Arc<Mutex<AudioBuffer>>;
 
 pub struct Recorder {
     target_sample_rate: u32,
@@ -11,11 +101,11 @@ pub struct Recorder {
     stream: Option<cpal::Stream>,
 }
 
-fn append_audio(buffer: &SharedAudioBuffer, samples: &[f32]) {
+fn append_audio(buffer: &SharedAudioBuffer, samples: &[f32], max_samples: usize) {
     if samples.is_empty() {
         return;
     }
-    buffer.lock().unwrap().extend_from_slice(samples);
+    buffer.lock().unwrap().append_capped(samples, max_samples);
 }
 
 fn ensure_capacity(buf: &mut Vec<f32>, desired: usize) {
@@ -35,7 +125,10 @@ fn mix_i16_to_mono(input: &[i16], channels: usize, mono: &mut Vec<f32>) {
     }
 
     for frame in input.chunks(channels) {
-        let sum: f32 = frame.iter().map(|&sample| sample as f32 / i16::MAX as f32).sum();
+        let sum: f32 = frame
+            .iter()
+            .map(|&sample| sample as f32 / i16::MAX as f32)
+            .sum();
         mono.push(sum / channels as f32);
     }
 }
@@ -45,7 +138,11 @@ fn mix_u16_to_mono(input: &[u16], channels: usize, mono: &mut Vec<f32>) {
     ensure_capacity(mono, input.len() / channels.max(1));
 
     if channels <= 1 {
-        mono.extend(input.iter().map(|&sample| (sample as f32 / u16::MAX as f32) * 2.0 - 1.0));
+        mono.extend(
+            input
+                .iter()
+                .map(|&sample| (sample as f32 / u16::MAX as f32) * 2.0 - 1.0),
+        );
         return;
     }
 
@@ -88,25 +185,16 @@ fn resample_into(mono: &[f32], resample_ratio: f64, out: &mut Vec<f32>) {
     }
 }
 
-fn rms(chunk: &[f32]) -> f32 {
-    if chunk.is_empty() {
-        return 0.0;
-    }
-
-    let sum: f32 = chunk.iter().map(|sample| sample * sample).sum();
-    (sum / chunk.len() as f32).sqrt()
-}
-
 impl Recorder {
     pub fn new(target_sample_rate: u32, max_duration: f32) -> Self {
         let headroom_seconds = 5.0;
-        let max_samples = ((max_duration + headroom_seconds).ceil() as usize)
-            * target_sample_rate as usize;
+        let max_samples =
+            ((max_duration + headroom_seconds).ceil() as usize) * target_sample_rate as usize;
 
         Self {
             target_sample_rate,
             max_samples,
-            buffer: Arc::new(Mutex::new(Vec::with_capacity(max_samples))),
+            buffer: Arc::new(Mutex::new(AudioBuffer::with_capacity(max_samples))),
             stream: None,
         }
     }
@@ -115,7 +203,6 @@ impl Recorder {
         {
             let mut buffer = self.buffer.lock().unwrap();
             buffer.clear();
-            ensure_capacity(&mut buffer, self.max_samples);
         }
 
         let host = cpal::default_host();
@@ -133,7 +220,7 @@ impl Recorder {
         let target_sr = self.target_sample_rate;
 
         println!(
-            "[typeoff] Device: {}Hz, {}ch, {:?} → resampling to {}Hz",
+            "[typeoff] Device: {}Hz, {}ch, {:?} -> resampling to {}Hz",
             device_sr, channels, sample_format, target_sr
         );
 
@@ -144,6 +231,7 @@ impl Recorder {
         };
 
         let buffer = Arc::clone(&self.buffer);
+        let max_samples = self.max_samples;
         let resample_ratio = target_sr as f64 / device_sr as f64;
 
         let stream = match sample_format {
@@ -158,9 +246,9 @@ impl Recorder {
                             mix_i16_to_mono(data, channels, &mut mono);
                             if device_sr != target_sr {
                                 resample_into(&mono, resample_ratio, &mut resampled);
-                                append_audio(&buffer, &resampled);
+                                append_audio(&buffer, &resampled, max_samples);
                             } else {
-                                append_audio(&buffer, &mono);
+                                append_audio(&buffer, &mono, max_samples);
                             }
                         },
                         |err| eprintln!("[typeoff] Audio error: {}", err),
@@ -179,9 +267,9 @@ impl Recorder {
                             mix_u16_to_mono(data, channels, &mut mono);
                             if device_sr != target_sr {
                                 resample_into(&mono, resample_ratio, &mut resampled);
-                                append_audio(&buffer, &resampled);
+                                append_audio(&buffer, &resampled, max_samples);
                             } else {
-                                append_audio(&buffer, &mono);
+                                append_audio(&buffer, &mono, max_samples);
                             }
                         },
                         |err| eprintln!("[typeoff] Audio error: {}", err),
@@ -200,9 +288,9 @@ impl Recorder {
                             mix_f32_to_mono(data, channels, &mut mono);
                             if device_sr != target_sr {
                                 resample_into(&mono, resample_ratio, &mut resampled);
-                                append_audio(&buffer, &resampled);
+                                append_audio(&buffer, &resampled, max_samples);
                             } else {
-                                append_audio(&buffer, &mono);
+                                append_audio(&buffer, &mono, max_samples);
                             }
                         },
                         |err| eprintln!("[typeoff] Audio error: {}", err),
@@ -219,8 +307,9 @@ impl Recorder {
 
     pub fn stop(&mut self) -> Vec<f32> {
         self.stream = None;
-        let audio = self.snapshot();
-        self.buffer.lock().unwrap().clear();
+        let mut buffer = self.buffer.lock().unwrap();
+        let audio = buffer.snapshot();
+        buffer.clear();
         audio
     }
 
@@ -230,29 +319,18 @@ impl Recorder {
 
     pub fn with_audio<R>(&self, f: impl FnOnce(&[f32]) -> R) -> R {
         let buffer = self.buffer.lock().unwrap();
-        f(&buffer)
+        f(buffer.as_slice())
     }
 
     pub fn snapshot(&self) -> Vec<f32> {
-        self.snapshot_from(0)
+        self.buffer.lock().unwrap().snapshot()
     }
 
-    pub fn snapshot_from(&self, start_sample: usize) -> Vec<f32> {
-        let buffer = self.buffer.lock().unwrap();
-        if start_sample >= buffer.len() {
-            return Vec::new();
-        }
-        buffer[start_sample..].to_vec()
+    pub fn snapshot_tail(&self, tail_samples: usize) -> Vec<f32> {
+        self.buffer.lock().unwrap().snapshot_tail(tail_samples)
     }
 
-    pub fn tail_rms(&self, tail_samples: usize) -> f32 {
-        self.with_audio(|audio| {
-            if audio.is_empty() {
-                return 0.0;
-            }
-
-            let start = audio.len().saturating_sub(tail_samples);
-            rms(&audio[start..])
-        })
+    pub fn discard_front(&self, samples: usize) {
+        self.buffer.lock().unwrap().discard_front(samples);
     }
 }

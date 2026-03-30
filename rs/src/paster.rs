@@ -2,10 +2,22 @@
 ///
 /// Mac: CGEvent Cmd+V (no osascript, no Accessibility workarounds)
 /// Windows/Linux: Ctrl+V via enigo
-
 use arboard::Clipboard;
 use std::thread;
 use std::time::Duration;
+
+pub fn copy_text(text: &str) -> Result<(), String> {
+    if text.is_empty() {
+        return Ok(());
+    }
+
+    match Clipboard::new() {
+        Ok(mut clipboard) => clipboard
+            .set_text(text.to_string())
+            .map_err(|e| format!("Failed to set clipboard: {}", e)),
+        Err(e) => Err(format!("Failed to open clipboard: {}", e)),
+    }
+}
 
 /// Copy text to clipboard and simulate paste keystroke.
 pub fn paste_text(text: &str) {
@@ -13,18 +25,9 @@ pub fn paste_text(text: &str) {
         return;
     }
 
-    // Copy to clipboard
-    match Clipboard::new() {
-        Ok(mut clipboard) => {
-            if let Err(e) = clipboard.set_text(text.to_string()) {
-                eprintln!("[typeoff] Failed to set clipboard: {}", e);
-                return;
-            }
-        }
-        Err(e) => {
-            eprintln!("[typeoff] Failed to open clipboard: {}", e);
-            return;
-        }
+    if let Err(e) = copy_text(text) {
+        eprintln!("[typeoff] {}", e);
+        return;
     }
 
     thread::sleep(Duration::from_millis(100));

@@ -28,13 +28,35 @@ pub struct Config {
     pub correction_model_path: Option<String>,
 }
 
-fn default_model() -> String { "small".into() }
-fn default_true() -> bool { true }
-fn default_silence_duration() -> f32 { 3.0 }
-fn default_max_duration() -> f32 { 60.0 }
-fn default_sample_rate() -> u32 { 16000 }
-fn default_correction_mode() -> String { "off".into() }
-fn default_use_gpu() -> bool { cfg!(any(feature = "cuda", feature = "metal")) }
+fn default_model() -> String {
+    "small".into()
+}
+fn default_true() -> bool {
+    true
+}
+fn default_silence_duration() -> f32 {
+    3.0
+}
+fn default_max_duration() -> f32 {
+    60.0
+}
+fn default_sample_rate() -> u32 {
+    16000
+}
+fn default_correction_mode() -> String {
+    "off".into()
+}
+fn default_use_gpu() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        cfg!(feature = "metal") && cfg!(target_arch = "aarch64")
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        cfg!(feature = "cuda")
+    }
+}
 
 fn normalize_language(language: Option<String>) -> Option<String> {
     match language.as_deref().map(str::trim) {
@@ -79,7 +101,9 @@ impl Config {
     pub fn load() -> Self {
         let path = Self::config_path();
         match fs::read_to_string(&path) {
-            Ok(content) => serde_json::from_str::<Self>(&content).unwrap_or_default().normalize(),
+            Ok(content) => serde_json::from_str::<Self>(&content)
+                .unwrap_or_default()
+                .normalize(),
             Err(_) => {
                 let config = Self::default().normalize();
                 config.save();
@@ -189,7 +213,10 @@ impl Config {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_lowercase();
                 if name.contains("qwen") && name.ends_with(".gguf") {
-                    println!("[typeoff] Found correction model: {}", entry.path().display());
+                    println!(
+                        "[typeoff] Found correction model: {}",
+                        entry.path().display()
+                    );
                     return Some(entry.path().to_string_lossy().into_owned());
                 }
             }

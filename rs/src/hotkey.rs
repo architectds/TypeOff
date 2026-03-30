@@ -6,31 +6,20 @@ use std::time::Instant;
 /// Sends a signal on each double-shift detected.
 pub fn listen_double_shift(tx: Sender<()>) {
     let mut last_shift_release = Instant::now() - std::time::Duration::from_secs(10);
-    let mut shift_solo = false;
 
-    listen(move |event: Event| {
-        match event.event_type {
-            EventType::KeyPress(key) => {
-                if key == Key::ShiftLeft || key == Key::ShiftRight {
-                    shift_solo = true;
+    listen(move |event: Event| match event.event_type {
+        EventType::KeyRelease(key) => {
+            if key == Key::ShiftLeft || key == Key::ShiftRight {
+                let now = Instant::now();
+                if now.duration_since(last_shift_release).as_millis() < 500 {
+                    let _ = tx.send(());
+                    last_shift_release = Instant::now() - std::time::Duration::from_secs(10);
                 } else {
-                    shift_solo = false; // Another key pressed during shift hold
+                    last_shift_release = now;
                 }
             }
-            EventType::KeyRelease(key) => {
-                if (key == Key::ShiftLeft || key == Key::ShiftRight) && shift_solo {
-                    let now = Instant::now();
-                    if now.duration_since(last_shift_release).as_millis() < 400 {
-                        // Double shift detected
-                        let _ = tx.send(());
-                        last_shift_release = Instant::now() - std::time::Duration::from_secs(10); // Reset
-                    } else {
-                        last_shift_release = now;
-                    }
-                }
-            }
-            _ => {}
         }
+        _ => {}
     })
     .expect("Failed to listen for hotkeys");
 }
